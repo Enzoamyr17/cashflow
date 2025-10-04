@@ -28,20 +28,38 @@ export function calculateBalance(transactions: Transaction[]): number {
 }
 
 /**
- * Calculate projected expenses from all expense transactions in the timeframe
+ * Calculate projected expenses (planned expenses that haven't been completed yet)
  */
 export function calculateProjectedExpenses(transactions: Transaction[]): number {
   return transactions
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && t.is_planned && !t.is_completed)
     .reduce((sum, t) => sum + Number(t.amount), 0);
 }
 
 /**
- * Calculate actual expenses from all expense transactions
+ * Calculate actual expenses (non-planned or completed expenses)
  */
 export function calculateActualExpenses(transactions: Transaction[]): number {
   return transactions
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && (!t.is_planned || t.is_completed))
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+}
+
+/**
+ * Calculate projected income (planned income that hasn't been completed yet)
+ */
+export function calculateProjectedIncome(transactions: Transaction[]): number {
+  return transactions
+    .filter((t) => t.type === 'income' && t.is_planned && !t.is_completed)
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+}
+
+/**
+ * Calculate actual income (non-planned or completed income)
+ */
+export function calculateActualIncome(transactions: Transaction[]): number {
+  return transactions
+    .filter((t) => t.type === 'income' && (!t.is_planned || t.is_completed))
     .reduce((sum, t) => sum + Number(t.amount), 0);
 }
 
@@ -66,14 +84,13 @@ export function calculateCategoryBreakdown(
     };
   });
 
-  // Calculate actual spending for each category (expenses - income for reimbursements)
+  // Calculate actual spending for each category (income - expenses)
   transactions.forEach((t) => {
     if (!t.category_id || !breakdown[t.category_id]) return;
-    
-    if (t.type === 'expense') {
+
+    if (t.type === 'income') {
       breakdown[t.category_id].actual += Number(t.amount);
-    } else if (t.type === 'income') {
-      // Income in a category acts as a reimbursement/offset
+    } else if (t.type === 'expense') {
       breakdown[t.category_id].actual -= Number(t.amount);
     }
   });
@@ -83,11 +100,8 @@ export function calculateCategoryBreakdown(
     cat.remaining = cat.planned - cat.actual;
   });
 
-  // Only show categories that are marked as budgeted
-  return Object.values(breakdown).filter(cat => {
-    const category = categories.find(c => c.id === cat.categoryId);
-    return category?.is_budgeted !== false;
-  });
+  // Return all categories without filtering
+  return Object.values(breakdown);
 }
 
 /**

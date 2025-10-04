@@ -6,6 +6,8 @@ import {
   calculateBalance,
   calculateProjectedExpenses,
   calculateActualExpenses,
+  calculateProjectedIncome,
+  calculateActualIncome,
   calculateCategoryBreakdown,
 } from '@/lib/calculations';
 import { BudgetSummary, CategoryBreakdown } from '@/types';
@@ -44,28 +46,40 @@ export async function getBudgetSummary(
   userId: string,
   startDate: string,
   endDate: string,
-  startingBudget: number
+  userStartingBalance: number,
+  userCreatedAt: string
 ): Promise<BudgetSummary> {
+  // Fetch transactions before budget start date to adjust starting balance
+  const transactionsBeforeStart = await getTransactions(userId, {
+    endDate: startDate,
+  });
+
+  // Filter to only completed transactions before start date
+  const completedBeforeStart = transactionsBeforeStart.filter(t => !t.is_planned || t.is_completed);
+  const incomeBeforeStart = calculateTotalIncome(completedBeforeStart);
+  const expensesBeforeStart = calculateTotalExpenses(completedBeforeStart);
+
+  // Adjust starting balance with transactions before budget start date
+  const adjustedStartingBalance = userStartingBalance + incomeBeforeStart - expensesBeforeStart;
+
+  // Fetch transactions within budget period
   const allTransactions = await getTransactions(userId, {
     startDate,
     endDate,
   });
 
   const allCategories = await getCategories(userId);
-  
-  // Filter to only budgeted categories and their transactions
-  const budgetedCategories = allCategories.filter(cat => cat.is_budgeted !== false);
-  const budgetedCategoryIds = new Set(budgetedCategories.map(cat => cat.id));
-  
-  // Filter to only budgeted categories, excluding uncategorized transactions
-  const budgetedTransactions = allTransactions.filter(
-    t => t.category_id && budgetedCategoryIds.has(t.category_id)
-  );
 
-  const totalIncome = calculateTotalIncome(budgetedTransactions);
-  const totalExpenses = calculateTotalExpenses(budgetedTransactions);
-  const projectedExpenses = calculateProjectedExpenses(budgetedTransactions);
-  const actualExpenses = calculateActualExpenses(budgetedTransactions);
+  // Include all transactions with categories (both budgeted and unbudgeted)
+  // Only exclude uncategorized transactions (those without category_id)
+  const categorizedTransactions = allTransactions.filter(t => t.category_id);
+
+  const totalIncome = calculateTotalIncome(categorizedTransactions);
+  const totalExpenses = calculateTotalExpenses(categorizedTransactions);
+  const projectedIncome = calculateProjectedIncome(categorizedTransactions);
+  const actualIncome = calculateActualIncome(categorizedTransactions);
+  const projectedExpenses = calculateProjectedExpenses(categorizedTransactions);
+  const actualExpenses = calculateActualExpenses(categorizedTransactions);
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -75,18 +89,20 @@ export async function getBudgetSummary(
   return {
     startDate,
     endDate,
-    startingBudget,
+    startingBudget: adjustedStartingBalance,
     timeFrameDays,
     totalIncome,
     totalExpenses,
+    projectedIncome,
+    actualIncome,
     projectedExpenses,
     actualExpenses,
-    remaining: startingBudget + totalIncome - totalExpenses,
+    remaining: adjustedStartingBalance + totalIncome - totalExpenses,
   };
 }
 
 /**
- * Get category breakdown for budget
+ * Get category breakdown for budget (budgeted categories only)
  */
 export async function getCategoryBreakdownForBudget(
   userId: string,
@@ -100,17 +116,45 @@ export async function getCategoryBreakdownForBudget(
   });
 
   const allCategories = await getCategories(userId);
-  
+
   // Filter to only budgeted categories
   const budgetedCategories = allCategories.filter(cat => cat.is_budgeted !== false);
   const budgetedCategoryIds = new Set(budgetedCategories.map(cat => cat.id));
-  
+
   // Filter transactions to only those from budgeted categories, excluding uncategorized
   const budgetedTransactions = allTransactions.filter(
     t => t.category_id && budgetedCategoryIds.has(t.category_id)
   );
 
   return calculateCategoryBreakdown(budgetedTransactions, budgetedCategories);
+}
+
+/**
+ * Get category breakdown for unbudgeted categories
+ */
+export async function getUnbudgetedCategoryBreakdown(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<CategoryBreakdown[]> {
+  // Fetch all transactions (both expenses and income) to calculate net spending per category
+  const allTransactions = await getTransactions(userId, {
+    startDate,
+    endDate,
+  });
+
+  const allCategories = await getCategories(userId);
+
+  // Filter to only unbudgeted categories
+  const unbudgetedCategories = allCategories.filter(cat => cat.is_budgeted === false);
+  const unbudgetedCategoryIds = new Set(unbudgetedCategories.map(cat => cat.id));
+
+  // Filter transactions to only those from unbudgeted categories
+  const unbudgetedTransactions = allTransactions.filter(
+    t => t.category_id && unbudgetedCategoryIds.has(t.category_id)
+  );
+
+  return calculateCategoryBreakdown(unbudgetedTransactions, unbudgetedCategories);
 }
 
 /**

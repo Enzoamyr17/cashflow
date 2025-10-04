@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getBudgetSummary, getCategoryBreakdownForBudget } from '@/server/analytics';
+import { getBudgetSummary, getCategoryBreakdownForBudget, getUnbudgetedCategoryBreakdown } from '@/server/analytics';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -36,20 +36,21 @@ export function useBudgetSummary(
   userId: string | undefined,
   startDate: string,
   endDate: string,
-  startingBudget: number
+  userStartingBalance: number,
+  userCreatedAt: string
 ) {
   return useQuery({
-    queryKey: ['budgetSummary', userId, startDate, endDate, startingBudget],
+    queryKey: ['budgetSummary', userId, startDate, endDate, userStartingBalance, userCreatedAt],
     queryFn: () => {
       if (!userId) throw new Error('User ID is required');
-      return getBudgetSummary(userId, startDate, endDate, startingBudget);
+      return getBudgetSummary(userId, startDate, endDate, userStartingBalance, userCreatedAt);
     },
     enabled: !!userId && !!startDate && !!endDate,
   });
 }
 
 /**
- * Hook to fetch category breakdown
+ * Hook to fetch category breakdown (budgeted categories)
  */
 export function useCategoryBreakdown(
   userId: string | undefined,
@@ -61,6 +62,24 @@ export function useCategoryBreakdown(
     queryFn: () => {
       if (!userId) throw new Error('User ID is required');
       return getCategoryBreakdownForBudget(userId, startDate, endDate);
+    },
+    enabled: !!userId && !!startDate && !!endDate,
+  });
+}
+
+/**
+ * Hook to fetch unbudgeted category breakdown
+ */
+export function useUnbudgetedCategoryBreakdown(
+  userId: string | undefined,
+  startDate: string,
+  endDate: string
+) {
+  return useQuery({
+    queryKey: ['unbudgetedCategoryBreakdown', userId, startDate, endDate],
+    queryFn: () => {
+      if (!userId) throw new Error('User ID is required');
+      return getUnbudgetedCategoryBreakdown(userId, startDate, endDate);
     },
     enabled: !!userId && !!startDate && !!endDate,
   });

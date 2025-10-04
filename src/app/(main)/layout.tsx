@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { Navbar } from './components/Navbar';
+import { StartingBalanceDialog } from '@/components/onboarding/StartingBalanceDialog';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
       <main className="container mx-auto px-4 py-8">{children}</main>
+      <StartingBalanceDialog />
     </div>
   );
 }

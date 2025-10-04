@@ -2,6 +2,7 @@ export interface User {
   id: string;
   user_code: string;
   name: string | null;
+  starting_balance: number;
   created_at: string;
 }
 

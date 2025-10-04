@@ -8,6 +8,8 @@ export interface BudgetSummary extends Budget {
   timeFrameDays: number;
   totalIncome: number;
   totalExpenses: number;
+  projectedIncome: number;
+  actualIncome: number;
   projectedExpenses: number;
   actualExpenses: number;
   remaining: number;

@@ -3,10 +3,11 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
-import { useBudgetSettings, useBudgetSummary, useCategoryBreakdown } from '@/hooks/useBudget';
+import { useBudgetSettings, useBudgetSummary, useCategoryBreakdown, useUnbudgetedCategoryBreakdown } from '@/hooks/useBudget';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { BudgetHeader } from './components/BudgetHeader';
-import { BudgetSummaryCard } from './components/BudgetSummaryCard';
+import { BudgetMetrics } from './components/BudgetMetrics';
+import { CategoryBreakdownCard } from './components/CategoryBreakdownCard';
 import { BudgetTable } from './components/BudgetTable';
 import { useMemo } from 'react';
 
@@ -27,57 +28,46 @@ export default function BudgetPage() {
     endDate
   );
 
-  // Calculate total planned budget from budgeted categories only
-  const totalPlannedBudget = useMemo(() => {
-    return categories
-      ?.filter(cat => cat.is_budgeted !== false)
-      .reduce((sum, cat) => sum + (Number(cat.planned_amount) || 0), 0) || 0;
-  }, [categories]);
+  const { data: unbudgetedCategoryBreakdown, isLoading: unbudgetedBreakdownLoading } = useUnbudgetedCategoryBreakdown(
+    user?.id,
+    startDate,
+    endDate
+  );
 
-  // Filter transactions to only show those from budgeted categories
-  // Exclude uncategorized transactions (transactions without a category_id)
-  const budgetedTransactions = useMemo(() => {
-    if (!allTransactions || !categories) return [];
-    const budgetedCategoryIds = new Set(
-      categories.filter(cat => cat.is_budgeted !== false).map(cat => cat.id)
-    );
-    return allTransactions.filter(t => 
-      t.category_id && budgetedCategoryIds.has(t.category_id)
-    );
-  }, [allTransactions, categories]);
-
-  // Calculate total planned expenses from budgeted transactions
-  const totalPlannedExpenses = useMemo(() => {
-    if (!budgetedTransactions) return 0;
-    return budgetedTransactions
-      .filter(t => t.type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-  }, [budgetedTransactions]);
+  // Show all categorized transactions (both budgeted and unbudgeted)
+  // Only exclude uncategorized transactions (those without a category_id)
+  const categorizedTransactions = useMemo(() => {
+    if (!allTransactions) return [];
+    return allTransactions.filter(t => t.category_id);
+  }, [allTransactions]);
 
   const { data: budgetSummary, isLoading: summaryLoading } = useBudgetSummary(
     user?.id,
     startDate,
     endDate,
-    totalPlannedBudget
+    user?.starting_balance || 0,
+    user?.created_at || new Date().toISOString()
   );
 
-  if (transactionsLoading || categoriesLoading || summaryLoading || breakdownLoading) {
+  if (transactionsLoading || categoriesLoading || summaryLoading || breakdownLoading || unbudgetedBreakdownLoading) {
     return <LoadingSpinner />;
   }
 
   return (
     <div className="space-y-6">
-      <BudgetHeader 
-        totalPlannedBudget={totalPlannedBudget}
-        totalPlannedExpenses={totalPlannedExpenses}
+      <BudgetHeader
+        startingBalance={user?.starting_balance || 0}
       />
-      <BudgetSummaryCard 
-        summary={budgetSummary} 
-        breakdown={categoryBreakdown || []} 
+      {budgetSummary && (
+        <BudgetMetrics summary={budgetSummary} />
+      )}
+      <CategoryBreakdownCard
+        breakdown={categoryBreakdown || []}
+        unbudgetedBreakdown={unbudgetedCategoryBreakdown || []}
         categories={categories || []}
       />
       <BudgetTable
-        transactions={budgetedTransactions}
+        transactions={categorizedTransactions}
         categories={categories || []}
         userId={user?.id || ''}
       />

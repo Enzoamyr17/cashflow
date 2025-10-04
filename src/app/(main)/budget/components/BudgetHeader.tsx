@@ -26,7 +26,7 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
               id="startDate"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onBlur={(e) => setStartDate(e.target.value)}
             />
           </div>
           <div>
@@ -35,7 +35,7 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
               id="endDate"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onBlur={(e) => setEndDate(e.target.value)}
             />
           </div>
           <div>

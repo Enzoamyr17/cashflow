@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BudgetSummary, CategoryBreakdown, Category } from '@/types';
 import { formatCurrency } from '@/lib/formatters';
-import { Calendar, TrendingDown, TrendingUp, Wallet, Edit2, Check, X, Eye, EyeOff, Plus } from 'lucide-react';
+import { Calendar, TrendingDown, TrendingUp, Wallet, Edit2, Check, X, EyeOff, Plus } from 'lucide-react';
 import { updateCategory } from '@/server/categories';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -38,9 +38,9 @@ export function BudgetSummaryCard({ summary, breakdown, categories }: BudgetSumm
       const previousCategories = queryClient.getQueriesData({ queryKey: ['categories'] });
       const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
 
-      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: Category[] | undefined) => {
         if (!old) return old;
-        return old.map((cat: any) => 
+        return old.map((cat: Category) => 
           cat.id === categoryId ? { ...cat, is_budgeted: isBudgeted } : cat
         );
       });
@@ -83,17 +83,17 @@ export function BudgetSummaryCard({ summary, breakdown, categories }: BudgetSumm
       const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
 
       // Optimistically update categories
-      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: Category[] | undefined) => {
         if (!old) return old;
-        return old.map((cat: any) => 
+        return old.map((cat: Category) => 
           cat.id === categoryId ? { ...cat, planned_amount: plannedAmount } : cat
         );
       });
 
       // Optimistically update breakdown
-      queryClient.setQueriesData({ queryKey: ['categoryBreakdown'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['categoryBreakdown'] }, (old: CategoryBreakdown[] | undefined) => {
         if (!old) return old;
-        return old.map((cat: any) => 
+        return old.map((cat: CategoryBreakdown) => 
           cat.categoryId === categoryId ? { ...cat, planned: plannedAmount, remaining: plannedAmount - cat.actual } : cat
         );
       });
@@ -263,7 +263,7 @@ export function BudgetSummaryCard({ summary, breakdown, categories }: BudgetSumm
             {breakdown.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No categories in budget.</p>
-                <p className="text-sm mt-1">Click "Add Category" to get started.</p>
+                <p className="text-sm mt-1">Click &quot;Add Category&quot; to get started.</p>
               </div>
             ) : (
               <Table>

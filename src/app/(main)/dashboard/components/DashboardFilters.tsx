@@ -36,7 +36,7 @@ export function DashboardFilters({ categories }: DashboardFiltersProps) {
 
       <div className="flex-1 min-w-[200px]">
         <label className="mb-2 block text-sm font-medium">Type</label>
-        <Select value={type || 'all'} onValueChange={(value) => setType(value === 'all' ? undefined : value as any)}>
+        <Select value={type || 'all'} onValueChange={(value) => setType(value === 'all' ? undefined : value as 'income' | 'expense')}>
           <SelectTrigger>
             <SelectValue placeholder="All types" />
           </SelectTrigger>

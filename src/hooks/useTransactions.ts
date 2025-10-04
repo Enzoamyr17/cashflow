@@ -9,12 +9,12 @@ import {
   markTransactionCompleted,
 } from '@/server/transactions';
 import {
-  Transaction,
-  TransactionWithCategory,
   CreateTransactionInput,
   UpdateTransactionInput,
   TransactionType,
+  TransactionWithCategory,
 } from '@/types';
+import { Category } from '@/types/category';
 import { toast } from 'sonner';
 
 /**
@@ -61,11 +61,11 @@ export function useCreateTransaction(userId: string) {
       const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
 
       // Get category info for the optimistic update
-      const categories = queryClient.getQueryData(['categories', userId]) as any[];
-      const category = categories?.find((cat: any) => cat.id === newTransaction.category_id);
+      const categories = queryClient.getQueryData(['categories', userId]) as Category[] | undefined;
+      const category = categories?.find((cat: Category) => cat.id === newTransaction.category_id);
 
       // Optimistically add new transaction (with temporary ID and category info)
-      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: TransactionWithCategory[] | undefined) => {
         if (!old) return old;
         return [...old, { 
           ...newTransaction, 
@@ -74,18 +74,18 @@ export function useCreateTransaction(userId: string) {
           created_at: new Date().toISOString(),
           category_name: category?.name || null,
           category_color: category?.color || null,
-        }];
+        } as TransactionWithCategory];
       });
 
       return { previousTransactions, previousBreakdown, previousSummary };
     },
     onSuccess: (data) => {
       // Update with real data from server
-      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: TransactionWithCategory[] | undefined) => {
         if (!old) return [data];
         // Replace temporary transaction with real one
-        return old.map((t: any) => t.id.toString().startsWith('temp-') ? data : t).filter((t: any, index: number, self: any) => 
-          self.findIndex((item: any) => item.id === t.id) === index
+        return old.map((t: TransactionWithCategory) => t.id.toString().startsWith('temp-') ? data : t).filter((t: TransactionWithCategory, index: number, self: TransactionWithCategory[]) => 
+          self.findIndex((item: TransactionWithCategory) => item.id === t.id) === index
         );
       });
       // Refetch breakdown and summary to reflect the new transaction
@@ -153,9 +153,9 @@ export function useDeleteTransaction() {
       const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
 
       // Optimistically update
-      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: TransactionWithCategory[] | undefined) => {
         if (!old) return old;
-        return old.filter((t: any) => t.id !== transactionId);
+        return old.filter((t: TransactionWithCategory) => t.id !== transactionId);
       });
 
       return { previousTransactions, previousBreakdown, previousSummary };
@@ -209,9 +209,9 @@ export function useMarkTransactionCompleted() {
       const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
 
       // Optimistically update
-      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: TransactionWithCategory[] | undefined) => {
         if (!old) return old;
-        return old.map((t: any) => 
+        return old.map((t: TransactionWithCategory) => 
           t.id === transactionId ? { ...t, is_completed: true } : t
         );
       });

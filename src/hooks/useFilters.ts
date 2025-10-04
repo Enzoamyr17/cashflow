@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import { TransactionType } from '@/types';
-import { getTodayString } from '@/lib/formatters';
 
 interface FilterState {
   startDate: string | undefined;

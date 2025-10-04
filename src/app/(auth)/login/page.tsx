@@ -90,7 +90,7 @@ export default function LoginPage() {
             {isLoading ? 'Logging in...' : 'Login / Create Account'}
           </Button>
           <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-            Don't have a user code? Just enter a new one to create your account!
+            Don&apos;t have a user code? Just enter a new one to create your account!
           </p>
         </CardContent>
       </Card>

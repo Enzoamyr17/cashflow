@@ -67,7 +67,7 @@ export async function getTransactions(
   }
 
   // Transform data to include category info
-  return (data || []).map((t: any) => ({
+  return (data || []).map((t: Transaction & { categories?: { name: string; color: string } | null }) => ({
     ...t,
     category_name: t.categories?.name || null,
     category_color: t.categories?.color || null,
@@ -128,10 +128,11 @@ export async function createTransaction(
   }
 
   // Transform to include category info
+  const dataWithCategory = data as Transaction & { categories?: { name: string; color: string } | null };
   return {
-    ...data,
-    category_name: (data as any).categories?.name || null,
-    category_color: (data as any).categories?.color || null,
+    ...dataWithCategory,
+    category_name: dataWithCategory.categories?.name || null,
+    category_color: dataWithCategory.categories?.color || null,
   } as TransactionWithCategory;
 }
 

@@ -119,8 +119,7 @@ export async function getCategoryBreakdownForBudget(
 export async function getTrendData(
   userId: string,
   startDate: string,
-  endDate: string,
-  groupBy: 'day' | 'week' | 'month' = 'day'
+  endDate: string
 ): Promise<Array<{ date: string; income: number; expense: number; balance: number }>> {
   const transactions = await getTransactions(userId, {
     startDate,

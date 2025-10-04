@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateTransaction, useUpdateTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
+import { useCreateTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
 import { formatCurrency, formatDate, getTodayString } from '@/lib/formatters';
 import { Trash2, Plus } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -35,7 +35,6 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
   });
 
   const createMutation = useCreateTransaction(userId);
-  const updateMutation = useUpdateTransaction();
   const deleteMutation = useDeleteTransaction();
 
   const handleAddTransaction = async () => {

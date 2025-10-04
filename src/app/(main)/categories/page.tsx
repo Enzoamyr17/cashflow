@@ -55,7 +55,7 @@ export default function CategoriesPage() {
         name: '',
         color: PRESET_COLORS[0],
       });
-    } catch (error) {
+    } catch {
       // Error toast already shown by hook
     }
   };

@@ -57,7 +57,7 @@ export function CategorySelect({
 
       // Select the newly created category
       onValueChange(newCategory.id);
-    } catch (error) {
+    } catch {
       // Error toast already shown by hook
     }
   };

@@ -3,7 +3,7 @@
 import { create } from 'zustand';
 import { User } from '@/types';
 import { loginWithUserCode, logout as logoutUser } from '@/lib/auth';
-import { getSession, clearSession } from '@/lib/storage';
+import { getSession } from '@/lib/storage';
 
 interface AuthState {
   user: User | null;

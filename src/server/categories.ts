@@ -51,6 +51,8 @@ export async function createCategory(
         user_id: userId,
         name: input.name,
         color: input.color || null,
+        planned_amount: input.planned_amount || 0,
+        is_budgeted: input.is_budgeted !== undefined ? input.is_budgeted : true,
       },
     ])
     .select()

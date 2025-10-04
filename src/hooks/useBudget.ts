@@ -8,10 +8,8 @@ import { persist } from 'zustand/middleware';
 interface BudgetSettings {
   startDate: string;
   endDate: string;
-  startingBudget: number;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
-  setStartingBudget: (amount: number) => void;
 }
 
 /**
@@ -22,10 +20,8 @@ export const useBudgetSettings = create<BudgetSettings>()(
     (set) => ({
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      startingBudget: 0,
       setStartDate: (date) => set({ startDate: date }),
       setEndDate: (date) => set({ endDate: date }),
-      setStartingBudget: (amount) => set({ startingBudget: amount }),
     }),
     {
       name: 'cashflow_budget_settings',

@@ -49,11 +49,67 @@ export function useCreateTransaction(userId: string) {
 
   return useMutation({
     mutationFn: (input: CreateTransactionInput) => createTransaction(userId, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    onMutate: async (newTransaction) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
+      await queryClient.cancelQueries({ queryKey: ['budgetSummary'] });
+
+      // Snapshot previous values
+      const previousTransactions = queryClient.getQueriesData({ queryKey: ['transactions'] });
+      const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
+      const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
+
+      // Get category info for the optimistic update
+      const categories = queryClient.getQueryData(['categories', userId]) as any[];
+      const category = categories?.find((cat: any) => cat.id === newTransaction.category_id);
+
+      // Optimistically add new transaction (with temporary ID and category info)
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+        if (!old) return old;
+        return [...old, { 
+          ...newTransaction, 
+          id: 'temp-' + Date.now(), 
+          user_id: userId, 
+          created_at: new Date().toISOString(),
+          category_name: category?.name || null,
+          category_color: category?.color || null,
+        }];
+      });
+
+      return { previousTransactions, previousBreakdown, previousSummary };
+    },
+    onSuccess: (data) => {
+      // Update with real data from server
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+        if (!old) return [data];
+        // Replace temporary transaction with real one
+        return old.map((t: any) => t.id.toString().startsWith('temp-') ? data : t).filter((t: any, index: number, self: any) => 
+          self.findIndex((item: any) => item.id === t.id) === index
+        );
+      });
+      // Refetch breakdown and summary to reflect the new transaction
+      queryClient.invalidateQueries({ queryKey: ['categoryBreakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['budgetSummary'] });
       toast.success('Transaction created successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, newTransaction, context) => {
+      // Rollback on error
+      if (context?.previousTransactions) {
+        context.previousTransactions.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousBreakdown) {
+        context.previousBreakdown.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousSummary) {
+        context.previousSummary.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
       toast.error(error.message || 'Failed to create transaction');
     },
   });
@@ -85,11 +141,49 @@ export function useDeleteTransaction() {
 
   return useMutation({
     mutationFn: (transactionId: string) => deleteTransaction(transactionId),
+    onMutate: async (transactionId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
+      await queryClient.cancelQueries({ queryKey: ['budgetSummary'] });
+
+      // Snapshot previous values
+      const previousTransactions = queryClient.getQueriesData({ queryKey: ['transactions'] });
+      const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
+      const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
+
+      // Optimistically update
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+        if (!old) return old;
+        return old.filter((t: any) => t.id !== transactionId);
+      });
+
+      return { previousTransactions, previousBreakdown, previousSummary };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      // Optimistic update already handled in onMutate
+      // Refetch breakdown and summary to reflect the deleted transaction
+      queryClient.invalidateQueries({ queryKey: ['categoryBreakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['budgetSummary'] });
       toast.success('Transaction deleted successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, transactionId, context) => {
+      // Rollback on error
+      if (context?.previousTransactions) {
+        context.previousTransactions.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousBreakdown) {
+        context.previousBreakdown.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousSummary) {
+        context.previousSummary.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
       toast.error(error.message || 'Failed to delete transaction');
     },
   });
@@ -103,11 +197,51 @@ export function useMarkTransactionCompleted() {
 
   return useMutation({
     mutationFn: (transactionId: string) => markTransactionCompleted(transactionId),
+    onMutate: async (transactionId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
+      await queryClient.cancelQueries({ queryKey: ['budgetSummary'] });
+
+      // Snapshot previous values
+      const previousTransactions = queryClient.getQueriesData({ queryKey: ['transactions'] });
+      const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
+      const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
+
+      // Optimistically update
+      queryClient.setQueriesData({ queryKey: ['transactions'] }, (old: any) => {
+        if (!old) return old;
+        return old.map((t: any) => 
+          t.id === transactionId ? { ...t, is_completed: true } : t
+        );
+      });
+
+      return { previousTransactions, previousBreakdown, previousSummary };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      // Optimistic update already handled in onMutate
+      // Refetch breakdown and summary to reflect the completion
+      queryClient.invalidateQueries({ queryKey: ['categoryBreakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['budgetSummary'] });
       toast.success('Transaction marked as completed');
     },
-    onError: (error: Error) => {
+    onError: (error: Error, transactionId, context) => {
+      // Rollback on error
+      if (context?.previousTransactions) {
+        context.previousTransactions.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousBreakdown) {
+        context.previousBreakdown.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
+      if (context?.previousSummary) {
+        context.previousSummary.forEach(([key, data]) => {
+          queryClient.setQueryData(key, data);
+        });
+      }
       toast.error(error.message || 'Failed to mark transaction as completed');
     },
   });

@@ -47,6 +47,7 @@ export function CategorySelect({
       const newCategory = await createMutation.mutateAsync({
         name: newCategoryName.trim(),
         color: newCategoryColor,
+        is_budgeted: true, // Default new categories to budgeted
       });
 
       // Close dialog and reset

@@ -98,7 +98,7 @@ export async function getTransactionById(transactionId: string): Promise<Transac
 export async function createTransaction(
   userId: string,
   input: CreateTransactionInput
-): Promise<Transaction> {
+): Promise<TransactionWithCategory> {
   const { data, error } = await supabase
     .from('transactions')
     .insert([
@@ -114,14 +114,25 @@ export async function createTransaction(
         is_completed: input.is_completed || false,
       },
     ])
-    .select()
+    .select(`
+      *,
+      categories:category_id (
+        name,
+        color
+      )
+    `)
     .single();
 
   if (error || !data) {
     throw new Error(`Failed to create transaction: ${error?.message || 'Unknown error'}`);
   }
 
-  return data as Transaction;
+  // Transform to include category info
+  return {
+    ...data,
+    category_name: (data as any).categories?.name || null,
+    category_color: (data as any).categories?.color || null,
+  } as TransactionWithCategory;
 }
 
 /**

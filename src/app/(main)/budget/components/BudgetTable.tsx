@@ -12,6 +12,7 @@ import { Trash2, Plus, Check } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CategorySelect } from '@/components/common/CategorySelect';
+import { toast } from 'sonner';
 
 interface BudgetTableProps {
   transactions: TransactionWithCategory[];
@@ -33,12 +34,23 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
     notes: '',
   });
 
+  // Filter to only show budgeted categories in the dropdown
+  const budgetedCategories = categories.filter(cat => cat.is_budgeted !== false);
+
   const createMutation = useCreateTransaction(userId);
   const completeMutation = useMarkTransactionCompleted();
   const deleteMutation = useDeleteTransaction();
 
   const handleAddTransaction = async () => {
-    if (!newTransaction.amount || !newTransaction.category_id) return;
+    if (!newTransaction.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+    
+    if (!newTransaction.category_id) {
+      toast.error('Please select a category');
+      return;
+    }
 
     await createMutation.mutateAsync({
       date: newTransaction.date,
@@ -76,7 +88,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
   return (
     <div className="rounded-lg border bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Planned Transactions</h2>
+        <h2 className="text-lg font-semibold">Budget Transactions</h2>
         <Button onClick={() => setShowAddRow(!showAddRow)} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Planned Expense
@@ -108,7 +120,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
               </TableCell>
               <TableCell>
                 <CategorySelect
-                  categories={categories}
+                  categories={budgetedCategories}
                   value={newTransaction.category_id}
                   onValueChange={(value) => setNewTransaction({ ...newTransaction, category_id: value })}
                   userId={userId}
@@ -165,47 +177,62 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             <TableRow>
               <TableCell colSpan={7}>
                 <EmptyState
-                  title="No planned transactions"
-                  description="Click 'Add Planned Expense' to start budgeting"
+                  title="No transactions"
+                  description="Click 'Add Planned Expense' to start budgeting, or add transactions from the dashboard"
                 />
               </TableCell>
             </TableRow>
           )}
 
-          {transactions.map((transaction) => (
-            <TableRow key={transaction.id}>
-              <TableCell>{formatDate(transaction.date)}</TableCell>
-              <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
-              <TableCell className="font-semibold text-orange-600">
-                {formatCurrency(Number(transaction.amount))}
-              </TableCell>
-              <TableCell>{transaction.method}</TableCell>
-              <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                {transaction.notes || '-'}
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleComplete(transaction.id)}
-                  className="h-8"
-                >
-                  <Check className="h-4 w-4 mr-1" />
-                  Mark Complete
-                </Button>
-              </TableCell>
-              <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleteId(transaction.id)}
-                  className="h-8 w-8"
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {[...transactions].sort((a, b) => {
+            const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateCompare !== 0) return dateCompare;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          }).map((transaction) => {
+            const isCompleted = !transaction.is_planned || transaction.is_completed;
+            
+            return (
+              <TableRow key={transaction.id} className={isCompleted ? 'opacity-60' : ''}>
+                <TableCell>{formatDate(transaction.date)}</TableCell>
+                <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
+                <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
+                  {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount))}
+                </TableCell>
+                <TableCell>{transaction.method}</TableCell>
+                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                  {transaction.notes || '-'}
+                </TableCell>
+                <TableCell>
+                  {isCompleted ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      <Check className="h-3 w-3 mr-1" />
+                      Completed
+                    </span>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleComplete(transaction.id)}
+                      className="h-8"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      Mark Complete
+                    </Button>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleteId(transaction.id)}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 

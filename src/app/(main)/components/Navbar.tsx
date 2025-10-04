@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Moon, Sun, LogOut, DollarSign } from 'lucide-react';
+import { Moon, Sun, LogOut, DollarSign, Wallet, ChartArea, List } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
 export function Navbar() {
@@ -27,7 +27,7 @@ export function Navbar() {
           <div className="flex items-center space-x-8">
             <Link href="/dashboard" className="flex items-center space-x-2">
               <DollarSign className="h-6 w-6 text-blue-500" />
-              <span className="text-xl font-bold">Cashflow</span>
+              <span className="hidden md:block text-xl font-bold">Cashflow</span>
             </Link>
             <div className="flex space-x-1">
               <Link href="/dashboard">
@@ -35,7 +35,8 @@ export function Navbar() {
                   variant={isActive('/dashboard') ? 'default' : 'ghost'}
                   size="sm"
                 >
-                  Dashboard
+                  <ChartArea className="h-4 w-4" />
+                  <p className="hidden md:block">Dashboard</p>
                 </Button>
               </Link>
               <Link href="/budget">
@@ -43,7 +44,8 @@ export function Navbar() {
                   variant={isActive('/budget') ? 'default' : 'ghost'}
                   size="sm"
                 >
-                  Budget
+                  <Wallet className="h-4 w-4" />
+                  <p className="hidden md:block">Budget</p>
                 </Button>
               </Link>
               <Link href="/categories">
@@ -51,14 +53,15 @@ export function Navbar() {
                   variant={isActive('/categories') ? 'default' : 'ghost'}
                   size="sm"
                 >
-                  Categories
+                  <List className="h-4 w-4" />
+                  <p className="hidden md:block">Categories</p>
                 </Button>
               </Link>
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="hidden md:block text-sm text-gray-600 dark:text-gray-300">
               {user?.name || user?.user_code}
             </span>
             {mounted && (

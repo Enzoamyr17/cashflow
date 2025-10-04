@@ -218,7 +218,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                 <TableRow>
                   <TableHead>Category</TableHead>
                   <TableHead>Budget</TableHead>
-                  <TableHead>Flow</TableHead>
+                  <TableHead className="hidden md:table-cell">Flow</TableHead>
                   <TableHead>Remaining Budget</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -274,7 +274,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <span className="font-medium">{formatCurrency(cat.actual)}</span>
                   </TableCell>
                   <TableCell>

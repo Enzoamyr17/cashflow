@@ -82,8 +82,8 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Category</TableHead>
+            <TableHead className="hidden md:table-cell">Type</TableHead>
+            <TableHead className="hidden md:table-cell">Category</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
             <TableHead>Notes</TableHead>
@@ -185,15 +185,18 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
           }).map((transaction) => (
             <TableRow key={transaction.id}>
               <TableCell>{formatDate(transaction.date)}</TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
                   transaction.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                 }`}>
                   {transaction.type}
                 </span>
               </TableCell>
-              <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
+              <TableCell className="hidden md:table-cell">
+                {transaction.category_name || 'Uncategorized'}
+              </TableCell>
               <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
                 {formatCurrency(Number(transaction.amount))}
               </TableCell>
               <TableCell>{transaction.method}</TableCell>

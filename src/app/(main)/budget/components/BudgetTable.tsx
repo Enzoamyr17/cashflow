@@ -99,7 +99,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
-            <TableHead>Category</TableHead>
+            <TableHead className="hidden md:table-cell">Category</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
             <TableHead>Notes</TableHead>
@@ -194,12 +194,13 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             return (
               <TableRow key={transaction.id} className={isCompleted ? 'opacity-60' : ''}>
                 <TableCell>{formatDate(transaction.date)}</TableCell>
-                <TableCell>{transaction.category_name || 'Uncategorized'}</TableCell>
+                <TableCell className="hidden md:table-cell">{transaction.category_name || 'Uncategorized'}</TableCell>
                 <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
+                  <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
                   {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount))}
                 </TableCell>
                 <TableCell>{transaction.method}</TableCell>
-                <TableCell className="text-sm text-gray-600 dark:text-gray-400">
+                <TableCell className="max-w-40 md:max-w-none text-ellipsis overflow-hidden whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                   {transaction.notes || '-'}
                 </TableCell>
                 <TableCell>
@@ -216,7 +217,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                       className="h-8"
                     >
                       <Check className="h-4 w-4 mr-1" />
-                      Mark Complete
+                      Complete
                     </Button>
                   )}
                 </TableCell>

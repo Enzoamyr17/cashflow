@@ -65,6 +65,10 @@ export default function BudgetPage() {
         breakdown={categoryBreakdown || []}
         unbudgetedBreakdown={unbudgetedCategoryBreakdown || []}
         categories={categories || []}
+        timeFrameMonths={budgetSummary ? budgetSummary.timeFrameDays / 30 : 1}
+        transactions={allTransactions || []}
+        startDate={startDate}
+        endDate={endDate}
       />
       <BudgetTable
         transactions={categorizedTransactions}

@@ -5,28 +5,84 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CategoryBreakdown, Category } from '@/types';
+import { CategoryBreakdown, Category, Transaction } from '@/types';
 import { formatCurrency } from '@/lib/formatters';
 import { Edit2, Check, X, EyeOff, Plus } from 'lucide-react';
 import { updateCategory } from '@/server/categories';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 interface CategoryBreakdownCardProps {
   breakdown: CategoryBreakdown[];
   unbudgetedBreakdown: CategoryBreakdown[];
   categories: Category[];
+  timeFrameMonths: number;
+  transactions: Transaction[];
+  startDate: string;
+  endDate: string;
 }
 
-export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categories }: CategoryBreakdownCardProps) {
+export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categories, timeFrameMonths, transactions, startDate, endDate }: CategoryBreakdownCardProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [editIsMonthly, setEditIsMonthly] = useState<boolean>(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const queryClient = useQueryClient();
 
   // Get categories that are not currently budgeted
   const hiddenCategories = categories.filter(cat => cat.is_budgeted === false);
+
+  // Calculate actual spending for the month of the selected date
+  const calculateActualForMonth = (categoryId: string) => {
+    const current = new Date(currentDate);
+    const currentMonth = current.getMonth();
+    const currentYear = current.getFullYear();
+
+    // Filter transactions that belong to the same month and year as currentDate
+    const categoryTransactions = transactions.filter(t => {
+      if (t.category_id !== categoryId) return false;
+
+      const txDate = new Date(t.date);
+      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+    });
+
+    let actual = 0;
+    categoryTransactions.forEach(t => {
+      if (t.type === 'income') {
+        actual += Number(t.amount);
+      } else if (t.type === 'expense') {
+        actual -= Number(t.amount);
+      }
+    });
+
+    return actual;
+  };
+
+  // Calculate total actual spending across ALL transactions (for Total Remaining)
+  const calculateTotalActual = (categoryId: string) => {
+    const categoryTransactions = transactions.filter(t => t.category_id === categoryId);
+
+    let actual = 0;
+    categoryTransactions.forEach(t => {
+      if (t.type === 'income') {
+        actual += Number(t.amount);
+      } else if (t.type === 'expense') {
+        actual -= Number(t.amount);
+      }
+    });
+
+    return actual;
+  };
+
+  // Calculate remaining budget for the selected month
+  const calculateRemainingBudget = (cat: CategoryBreakdown) => {
+    const actualForMonth = calculateActualForMonth(cat.categoryId);
+    return cat.planned + actualForMonth;
+  };
 
   const toggleBudgetedMutation = useMutation({
     mutationFn: ({ categoryId, isBudgeted }: { categoryId: string; isBudgeted: boolean }) =>
@@ -77,9 +133,9 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
   });
 
   const updateCategoryMutation = useMutation({
-    mutationFn: ({ categoryId, plannedAmount }: { categoryId: string; plannedAmount: number }) =>
-      updateCategory({ id: categoryId, planned_amount: plannedAmount }),
-    onMutate: async ({ categoryId, plannedAmount }) => {
+    mutationFn: ({ categoryId, plannedAmount, isMonthly }: { categoryId: string; plannedAmount: number; isMonthly: boolean }) =>
+      updateCategory({ id: categoryId, planned_amount: plannedAmount, is_monthly: isMonthly }),
+    onMutate: async ({ categoryId, plannedAmount, isMonthly }) => {
       await queryClient.cancelQueries({ queryKey: ['categories'] });
       await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
       await queryClient.cancelQueries({ queryKey: ['budgetSummary'] });
@@ -91,7 +147,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
       queryClient.setQueriesData({ queryKey: ['categories'] }, (old: Category[] | undefined) => {
         if (!old) return old;
         return old.map((cat: Category) =>
-          cat.id === categoryId ? { ...cat, planned_amount: plannedAmount } : cat
+          cat.id === categoryId ? { ...cat, planned_amount: plannedAmount, is_monthly: isMonthly } : cat
         );
       });
 
@@ -131,13 +187,16 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
   });
 
   const startEdit = (cat: CategoryBreakdown) => {
+    const category = categories.find(c => c.id === cat.categoryId);
     setEditingId(cat.categoryId);
     setEditValue(cat.planned.toString());
+    setEditIsMonthly(category?.is_monthly || false);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditValue('');
+    setEditIsMonthly(false);
   };
 
   const saveEdit = (categoryId: string) => {
@@ -146,7 +205,20 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
       toast.error('Please enter a valid amount');
       return;
     }
-    updateCategoryMutation.mutate({ categoryId, plannedAmount });
+    updateCategoryMutation.mutate({ categoryId, plannedAmount, isMonthly: editIsMonthly });
+  };
+
+  const calculateTotalBudget = (cat: CategoryBreakdown) => {
+    const category = categories.find(c => c.id === cat.categoryId);
+    if (category?.is_monthly) {
+      return cat.planned * Math.floor(timeFrameMonths);
+    }
+    return cat.planned;
+  };
+
+  const calculateTotalRemaining = (cat: CategoryBreakdown) => {
+    const totalBudget = calculateTotalBudget(cat);
+    return totalBudget + cat.actual;
   };
 
   return (
@@ -155,18 +227,24 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Category Breakdown</CardTitle>
-
           </div>
-          {hiddenCategories.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAddCategory(!showAddCategory)}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Category
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-md font-medium text-muted-foreground">
+                Budget for: {new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+            {hiddenCategories.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddCategory(!showAddCategory)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Category
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -220,89 +298,133 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                   <TableHead>Budget</TableHead>
                   <TableHead className="hidden md:table-cell">Flow</TableHead>
                   <TableHead>Remaining Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">Total Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">Total Remaining</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {breakdown.map((cat) => (
-                <TableRow key={cat.categoryId}>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {cat.categoryColor && (
-                        <div
-                          className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: cat.categoryColor }}
-                        />
+              {breakdown.map((cat) => {
+                const category = categories.find(c => c.id === cat.categoryId);
+                const totalBudget = calculateTotalBudget(cat);
+                const actualForMonth = calculateActualForMonth(cat.categoryId);
+                const remainingBudget = calculateRemainingBudget(cat);
+                const totalActual = calculateTotalActual(cat.categoryId);
+                const totalRemaining = totalBudget + totalActual;
+
+                return (
+                  <TableRow key={cat.categoryId}>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        {cat.categoryColor && (
+                          <div
+                            className="h-2 w-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: cat.categoryColor }}
+                          />
+                        )}
+                        <span className="font-medium">{cat.categoryName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {editingId === cat.categoryId ? (
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center space-x-1">
+                            <Input
+                              type="number"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="w-28 h-8"
+                              step="0.01"
+                              min="0"
+                            />
+                            <button
+                              onClick={() => saveEdit(cat.categoryId)}
+                              className="text-green-600 hover:text-green-700 p-1"
+                              disabled={updateCategoryMutation.isPending}
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="text-red-600 hover:text-red-700 p-1"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`is-monthly-${cat.categoryId}`}
+                              checked={editIsMonthly}
+                              onCheckedChange={(checked: boolean) => setEditIsMonthly(checked)}
+                            />
+                            <Label htmlFor={`is-monthly-${cat.categoryId}`} className="text-xs">
+                              Monthly
+                            </Label>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-start items-center">
+                          <span className="font-medium min-w-34">{formatCurrency(cat.planned)}</span>
+                          {category?.is_monthly && (
+                            <span className="text-xs text-muted-foreground ml-1">/mo</span>
+                          )}
+                          <button
+                            onClick={() => startEdit(cat)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 ml-1"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       )}
-                      <span className="font-medium">{cat.categoryName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {editingId === cat.categoryId ? (
-                      <div className="flex items-center space-x-1">
-                        <Input
-                          type="number"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-28 h-8"
-                          step="0.01"
-                          min="0"
-                        />
-                        <button
-                          onClick={() => saveEdit(cat.categoryId)}
-                          className="text-green-600 hover:text-green-700 p-1"
-                          disabled={updateCategoryMutation.isPending}
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="text-red-600 hover:text-red-700 p-1"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex justify-start items-center">
-                        <span className="font-medium min-w-34">{formatCurrency(cat.planned)}</span>
-                        <button
-                          onClick={() => startEdit(cat)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <span className="font-medium">{formatCurrency(cat.actual)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className={`font-semibold ${cat.remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(cat.remaining)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const category = categories.find(c => c.id === cat.categoryId);
-                        if (category) {
-                          toggleBudgetedMutation.mutate({
-                            categoryId: cat.categoryId,
-                            isBudgeted: false
-                          });
-                        }
-                      }}
-                      className="h-8 w-8"
-                      title="Remove from budget"
-                    >
-                      <EyeOff className="h-4 w-4 text-gray-400" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="font-medium">{formatCurrency(actualForMonth)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`font-semibold ${remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(remainingBudget)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {category?.is_monthly ? (
+                        <span className="font-medium text-blue-600">
+                          {formatCurrency(totalBudget)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {category?.is_monthly ? (
+                        <span className={`font-semibold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(totalRemaining)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const category = categories.find(c => c.id === cat.categoryId);
+                          if (category) {
+                            toggleBudgetedMutation.mutate({
+                              categoryId: cat.categoryId,
+                              isBudgeted: false
+                            });
+                          }
+                        }}
+                        className="h-8 w-8"
+                        title="Remove from budget"
+                      >
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
               </TableBody>
             </Table>
           </>

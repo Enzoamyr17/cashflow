@@ -97,7 +97,7 @@ export function calculateCategoryBreakdown(
 
   // Calculate remaining for each category
   Object.values(breakdown).forEach((cat) => {
-    cat.remaining = cat.planned - cat.actual;
+    cat.remaining = cat.planned + cat.actual;
   });
 
   // Return all categories without filtering

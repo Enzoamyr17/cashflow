@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useBudgetSettings } from '@/hooks/useBudget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,8 @@ interface BudgetHeaderProps {
 
 export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
   const { startDate, endDate, setStartDate, setEndDate } = useBudgetSettings();
+  const [localStartDate, setLocalStartDate] = useState(startDate);
+  const [localEndDate, setLocalEndDate] = useState(endDate);
 
   return (
     <Card>
@@ -25,7 +28,8 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
             <Input
               id="startDate"
               type="date"
-              value={startDate}
+              value={localStartDate}
+              onChange={(e) => setLocalStartDate(e.target.value)}
               onBlur={(e) => setStartDate(e.target.value)}
             />
           </div>
@@ -34,7 +38,8 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
             <Input
               id="endDate"
               type="date"
-              value={endDate}
+              value={localEndDate}
+              onChange={(e) => setLocalEndDate(e.target.value)}
               onBlur={(e) => setEndDate(e.target.value)}
             />
           </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useFilters } from '@/hooks/useFilters';
 import { Category } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,8 @@ interface DashboardFiltersProps {
 
 export function DashboardFilters({ categories }: DashboardFiltersProps) {
   const { startDate, endDate, type, categoryId, setStartDate, setEndDate, setType, setCategoryId, clearFilters } = useFilters();
+  const [localStartDate, setLocalStartDate] = useState(startDate || '');
+  const [localEndDate, setLocalEndDate] = useState(endDate || '');
 
   return (
     <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-white p-4 dark:bg-gray-800">
@@ -20,8 +23,9 @@ export function DashboardFilters({ categories }: DashboardFiltersProps) {
         <label className="mb-2 block text-sm font-medium">Start Date</label>
         <Input
           type="date"
-          value={startDate || ''}
-          onChange={(e) => setStartDate(e.target.value || undefined)}
+          value={localStartDate}
+          onChange={(e) => setLocalStartDate(e.target.value)}
+          onBlur={(e) => setStartDate(e.target.value || undefined)}
         />
       </div>
 
@@ -29,8 +33,9 @@ export function DashboardFilters({ categories }: DashboardFiltersProps) {
         <label className="mb-2 block text-sm font-medium">End Date</label>
         <Input
           type="date"
-          value={endDate || ''}
-          onChange={(e) => setEndDate(e.target.value || undefined)}
+          value={localEndDate}
+          onChange={(e) => setLocalEndDate(e.target.value)}
+          onBlur={(e) => setEndDate(e.target.value || undefined)}
         />
       </div>
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { TransactionWithCategory, Category, PaymentMethod } from '@/types';
+import { useState, useEffect } from 'react';
+import { TransactionWithCategory, Category, PaymentMethod, TransactionType } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Trash2, Plus, Check } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CategorySelect } from '@/components/common/CategorySelect';
+import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
 interface BudgetTableProps {
@@ -24,15 +25,28 @@ const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Ot
 
 export function BudgetTable({ transactions, categories, userId }: BudgetTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [newTransaction, setNewTransaction] = useState({
     date: getTodayString(),
+    type: 'expense' as TransactionType,
     category_id: '',
     amount: '',
     method: 'Cash' as PaymentMethod,
     notes: '',
+    is_planned: true,
   });
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Filter to only show budgeted categories in the dropdown
   const budgetedCategories = categories.filter(cat => cat.is_budgeted !== false);
@@ -41,12 +55,20 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
   const completeMutation = useMarkTransactionCompleted();
   const deleteMutation = useDeleteTransaction();
 
+  const handleAddClick = () => {
+    if (isMobile) {
+      setShowModal(true);
+    } else {
+      setShowAddRow(!showAddRow);
+    }
+  };
+
   const handleAddTransaction = async () => {
     if (!newTransaction.amount) {
       toast.error('Please enter an amount');
       return;
     }
-    
+
     if (!newTransaction.category_id) {
       toast.error('Please select a category');
       return;
@@ -54,24 +76,57 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
 
     await createMutation.mutateAsync({
       date: newTransaction.date,
-      type: 'expense',
+      type: newTransaction.type,
       category_id: newTransaction.category_id,
       amount: parseFloat(newTransaction.amount),
       method: newTransaction.method,
       notes: newTransaction.notes || null,
-      is_planned: true,
-      is_completed: false,
+      is_planned: newTransaction.is_planned,
+      is_completed: !newTransaction.is_planned,
     });
 
     // Reset form
     setNewTransaction({
       date: getTodayString(),
+      type: 'expense',
       category_id: '',
       amount: '',
       method: 'Cash',
       notes: '',
+      is_planned: true,
     });
     setShowAddRow(false);
+  };
+
+  const handleModalSave = async (transaction: {
+    date: string;
+    type: TransactionType;
+    category_id: string;
+    amount: string;
+    method: PaymentMethod;
+    notes: string;
+    is_planned?: boolean;
+  }) => {
+    if (!transaction.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+
+    if (!transaction.category_id) {
+      toast.error('Please select a category');
+      return;
+    }
+
+    await createMutation.mutateAsync({
+      date: transaction.date,
+      type: transaction.type,
+      category_id: transaction.category_id,
+      amount: parseFloat(transaction.amount),
+      method: transaction.method,
+      notes: transaction.notes || null,
+      is_planned: transaction.is_planned ?? true,
+      is_completed: !(transaction.is_planned ?? true),
+    });
   };
 
   const handleComplete = async (id: string) => {
@@ -89,9 +144,9 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
     <div className="rounded-lg border bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Budget Transactions</h2>
-        <Button onClick={() => setShowAddRow(!showAddRow)} size="sm">
+        <Button onClick={handleAddClick} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Planned Expense
+          Create Transaction
         </Button>
       </div>
 
@@ -99,6 +154,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
+            <TableHead className="hidden md:table-cell">Type</TableHead>
             <TableHead className="hidden md:table-cell">Category</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
@@ -118,7 +174,21 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                   className="h-8"
                 />
               </TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
+                <Select
+                  value={newTransaction.type}
+                  onValueChange={(value: TransactionType) => setNewTransaction({ ...newTransaction, type: value })}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell className="hidden md:table-cell">
                 <CategorySelect
                   categories={budgetedCategories}
                   value={newTransaction.category_id}
@@ -163,7 +233,18 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                 />
               </TableCell>
               <TableCell>
-                <span className="text-xs text-gray-500">Pending</span>
+                <Select
+                  value={newTransaction.is_planned ? 'planned' : 'completed'}
+                  onValueChange={(value) => setNewTransaction({ ...newTransaction, is_planned: value === 'planned' })}
+                >
+                  <SelectTrigger className="h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">Planned</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
               </TableCell>
               <TableCell>
                 <Button onClick={handleAddTransaction} size="sm" className="h-8">
@@ -175,10 +256,10 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
 
           {transactions.length === 0 && !showAddRow && (
             <TableRow>
-              <TableCell colSpan={7}>
+              <TableCell colSpan={8}>
                 <EmptyState
                   title="No transactions"
-                  description="Click 'Add Planned Expense' to start budgeting, or add transactions from the dashboard"
+                  description="Click 'Create Transaction' to start budgeting, or add transactions from the dashboard"
                 />
               </TableCell>
             </TableRow>
@@ -190,10 +271,17 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           }).map((transaction) => {
             const isCompleted = !transaction.is_planned || transaction.is_completed;
-            
+
             return (
               <TableRow key={transaction.id} className={isCompleted ? 'opacity-60' : ''}>
                 <TableCell>{formatDate(transaction.date)}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
+                    transaction.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  }`}>
+                    {transaction.type}
+                  </span>
+                </TableCell>
                 <TableCell className="hidden md:table-cell">{transaction.category_name || 'Uncategorized'}</TableCell>
                 <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
                   <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
@@ -236,6 +324,16 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
           })}
         </TableBody>
       </Table>
+
+      <TransactionModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        categories={budgetedCategories}
+        userId={userId}
+        onSave={handleModalSave}
+        showPlannedToggle={true}
+        filterBudgetedCategories={true}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TransactionWithCategory, Category, PaymentMethod, TransactionType } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { Trash2, Plus } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CategorySelect } from '@/components/common/CategorySelect';
+import { TransactionModal } from '@/components/common/TransactionModal';
+import { toast } from 'sonner';
 
 interface TransactionTableProps {
   transactions: TransactionWithCategory[];
@@ -23,7 +25,9 @@ const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Ot
 
 export function TransactionTable({ transactions, categories, userId }: TransactionTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [newTransaction, setNewTransaction] = useState({
     date: getTodayString(),
@@ -34,11 +38,36 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     notes: '',
   });
 
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const createMutation = useCreateTransaction(userId);
   const deleteMutation = useDeleteTransaction();
 
+  const handleAddClick = () => {
+    if (isMobile) {
+      setShowModal(true);
+    } else {
+      setShowAddRow(!showAddRow);
+    }
+  };
+
   const handleAddTransaction = async () => {
-    if (!newTransaction.amount || !newTransaction.category_id) return;
+    if (!newTransaction.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+
+    if (!newTransaction.category_id) {
+      toast.error('Please select a category');
+      return;
+    }
 
     await createMutation.mutateAsync({
       date: newTransaction.date,
@@ -61,6 +90,34 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     setShowAddRow(false);
   };
 
+  const handleModalSave = async (transaction: {
+    date: string;
+    type: TransactionType;
+    category_id: string;
+    amount: string;
+    method: PaymentMethod;
+    notes: string;
+  }) => {
+    if (!transaction.amount) {
+      toast.error('Please enter an amount');
+      return;
+    }
+
+    if (!transaction.category_id) {
+      toast.error('Please select a category');
+      return;
+    }
+
+    await createMutation.mutateAsync({
+      date: transaction.date,
+      type: transaction.type,
+      category_id: transaction.category_id,
+      amount: parseFloat(transaction.amount),
+      method: transaction.method,
+      notes: transaction.notes || null,
+    });
+  };
+
   const handleDelete = async () => {
     if (deleteId) {
       await deleteMutation.mutateAsync(deleteId);
@@ -72,7 +129,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     <div className="rounded-lg border bg-white dark:bg-gray-800">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Transactions</h2>
-        <Button onClick={() => setShowAddRow(!showAddRow)} size="sm">
+        <Button onClick={handleAddClick} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Transaction
         </Button>
@@ -215,6 +272,14 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
           ))}
         </TableBody>
       </Table>
+
+      <TransactionModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        categories={categories}
+        userId={userId}
+        onSave={handleModalSave}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

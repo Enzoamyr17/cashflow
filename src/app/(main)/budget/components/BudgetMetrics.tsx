@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BudgetSummary } from '@/types';
 import { formatCurrency } from '@/lib/formatters';
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ArrowRightLeft } from 'lucide-react';
 
 interface BudgetMetricsProps {
   summary: BudgetSummary;
@@ -14,9 +14,12 @@ export function BudgetMetrics({ summary }: BudgetMetricsProps) {
   const actualBalance = summary.startingBudget + summary.actualIncome - summary.actualExpenses;
   // Projected balance adds planned transactions to actual balance
   const projectedBalance = actualBalance + summary.projectedIncome - summary.projectedExpenses;
+  // Calculate change for actual and projected
+  const actualChange = summary.actualIncome - summary.actualExpenses;
+  const projectedChange = summary.projectedIncome - summary.projectedExpenses;
 
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-5">
       {/* Column 1: Starting Balance */}
       <div className="space-y-4">
         <Card>
@@ -100,7 +103,44 @@ export function BudgetMetrics({ summary }: BudgetMetricsProps) {
         </Card>
       </div>
 
-      {/* Column 4: Balances */}
+      {/* Column 4: Change */}
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Actual Change</CardTitle>
+            <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${
+              actualChange >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatCurrency(actualChange)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Income - Expenses
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projected Change</CardTitle>
+            <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${
+              projectedChange >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {formatCurrency(projectedChange)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Income - Expenses
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Column 5: Balances */}
       <div className="space-y-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

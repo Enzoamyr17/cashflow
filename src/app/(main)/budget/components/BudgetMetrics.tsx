@@ -116,9 +116,6 @@ export function BudgetMetrics({ summary }: BudgetMetricsProps) {
             }`}>
               {formatCurrency(actualChange)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Income - Expenses
-            </p>
           </CardContent>
         </Card>
 
@@ -133,9 +130,6 @@ export function BudgetMetrics({ summary }: BudgetMetricsProps) {
             }`}>
               {formatCurrency(projectedChange)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Income - Expenses
-            </p>
           </CardContent>
         </Card>
       </div>

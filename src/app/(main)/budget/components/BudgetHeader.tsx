@@ -9,9 +9,10 @@ import { formatCurrency } from '@/lib/formatters';
 
 interface BudgetHeaderProps {
   startingBalance: number;
+  timeFrameMonths: number;
 }
 
-export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
+export function BudgetHeader({ startingBalance, timeFrameMonths }: BudgetHeaderProps) {
   const { startDate, endDate, setStartDate, setEndDate } = useBudgetSettings();
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
@@ -22,7 +23,7 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
         <CardTitle>Budget Settings</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-4">
           <div>
             <Label htmlFor="startDate">Start Date</Label>
             <Input
@@ -41,6 +42,15 @@ export function BudgetHeader({ startingBalance }: BudgetHeaderProps) {
               value={localEndDate}
               onChange={(e) => setLocalEndDate(e.target.value)}
               onBlur={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="time-frame">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
+            <Input
+              id="time-frame"
+              value={timeFrameMonths.toFixed(1)}
+              readOnly
+              className="bg-muted"
             />
           </div>
           <div>

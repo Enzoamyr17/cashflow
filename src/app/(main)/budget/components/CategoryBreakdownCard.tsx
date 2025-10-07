@@ -42,9 +42,10 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
     const currentMonth = current.getMonth();
     const currentYear = current.getFullYear();
 
-    // Filter transactions that belong to the same month and year as currentDate
+    // Filter transactions that belong to the same month and year as currentDate (exclude planned transactions)
     const categoryTransactions = transactions.filter(t => {
       if (t.category_id !== categoryId) return false;
+      if (t.is_planned) return false;
 
       const txDate = new Date(t.date);
       return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
@@ -53,9 +54,9 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
     let actual = 0;
     categoryTransactions.forEach(t => {
       if (t.type === 'income') {
-        actual += Number(t.amount);
-      } else if (t.type === 'expense') {
         actual -= Number(t.amount);
+      } else if (t.type === 'expense') {
+        actual += Number(t.amount);
       }
     });
 
@@ -64,14 +65,14 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
 
   // Calculate total actual spending across ALL transactions (for Total Remaining)
   const calculateTotalActual = (categoryId: string) => {
-    const categoryTransactions = transactions.filter(t => t.category_id === categoryId);
+    const categoryTransactions = transactions.filter(t => t.category_id === categoryId && !t.is_planned);
 
     let actual = 0;
     categoryTransactions.forEach(t => {
       if (t.type === 'income') {
-        actual += Number(t.amount);
-      } else if (t.type === 'expense') {
         actual -= Number(t.amount);
+      } else if (t.type === 'expense') {
+        actual += Number(t.amount);
       }
     });
 
@@ -81,7 +82,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
   // Calculate remaining budget for the selected month
   const calculateRemainingBudget = (cat: CategoryBreakdown) => {
     const actualForMonth = calculateActualForMonth(cat.categoryId);
-    return cat.planned + actualForMonth;
+    return cat.planned - actualForMonth;
   };
 
   const toggleBudgetedMutation = useMutation({
@@ -218,7 +219,8 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
 
   const calculateTotalRemaining = (cat: CategoryBreakdown) => {
     const totalBudget = calculateTotalBudget(cat);
-    return totalBudget + cat.actual;
+    const totalActual = calculateTotalActual(cat.categoryId);
+    return totalBudget - totalActual;
   };
 
   return (
@@ -230,7 +232,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-md font-medium text-muted-foreground">
+              <span className="text-md  text-muted-foreground">
                 Budget for: {new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </span>
             </div>
@@ -250,7 +252,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
       <CardContent>
         {showAddCategory && hiddenCategories.length > 0 && (
           <div className="mb-4 p-4 border rounded-lg bg-muted/50">
-            <p className="text-sm font-medium mb-2">Select a category to add to budget:</p>
+            <p className="text-sm  mb-2">Select a category to add to budget:</p>
             <Select
               onValueChange={(categoryId) => {
                 toggleBudgetedMutation.mutate({
@@ -296,21 +298,37 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                 <TableRow>
                   <TableHead>Category</TableHead>
                   <TableHead>Budget</TableHead>
-                  <TableHead className="hidden md:table-cell">Flow</TableHead>
-                  <TableHead>Remaining Budget</TableHead>
-                  <TableHead className="hidden lg:table-cell">Total Budget</TableHead>
-                  <TableHead className="hidden lg:table-cell">Total Remaining</TableHead>
+                  <TableHead>Total Budget</TableHead>
+                  <TableHead>Spent</TableHead>
+                  <TableHead>Remaining</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {breakdown.map((cat) => {
+              {breakdown
+                .sort((a, b) => {
+                  const catA = categories.find(c => c.id === a.categoryId);
+                  const catB = categories.find(c => c.id === b.categoryId);
+
+                  // Sort by monthly status first (monthly categories first)
+                  if (catA?.is_monthly !== catB?.is_monthly) {
+                    return catA?.is_monthly ? -1 : 1;
+                  }
+
+                  // Then by budget amount (descending)
+                  if (a.planned !== b.planned) {
+                    return b.planned - a.planned;
+                  }
+
+                  // Finally by category name (alphabetical)
+                  return a.categoryName.localeCompare(b.categoryName);
+                })
+                .map((cat) => {
                 const category = categories.find(c => c.id === cat.categoryId);
                 const totalBudget = calculateTotalBudget(cat);
                 const actualForMonth = calculateActualForMonth(cat.categoryId);
                 const remainingBudget = calculateRemainingBudget(cat);
-                const totalActual = calculateTotalActual(cat.categoryId);
-                const totalRemaining = totalBudget + totalActual;
+                const totalRemaining = calculateTotalRemaining(cat);
 
                 return (
                   <TableRow key={cat.categoryId}>
@@ -322,7 +340,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                             style={{ backgroundColor: cat.categoryColor }}
                           />
                         )}
-                        <span className="font-medium">{cat.categoryName}</span>
+                        <span className="">{cat.categoryName}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -364,10 +382,12 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                         </div>
                       ) : (
                         <div className="flex justify-start items-center">
-                          <span className="font-medium min-w-34">{formatCurrency(cat.planned)}</span>
-                          {category?.is_monthly && (
-                            <span className="text-xs text-muted-foreground ml-1">/mo</span>
-                          )}
+                          <div className="flex items-center min-w-28">
+                            <span className="">{formatCurrency(cat.planned)}</span>
+                            {category?.is_monthly && (
+                              <span className="text-xs text-muted-foreground ml-1">/mo</span>
+                            )}
+                          </div>
                           <button
                             onClick={() => startEdit(cat)}
                             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 ml-1"
@@ -377,30 +397,25 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <span className="font-medium">{formatCurrency(actualForMonth)}</span>
-                    </TableCell>
                     <TableCell>
-                      <span className={`font-semibold ${remainingBudget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(remainingBudget)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {category?.is_monthly ? (
-                        <span className="font-medium text-blue-600">
+                        <span className="">
                           {formatCurrency(totalBudget)}
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell>
+                      <span className={` ${actualForMonth < 0 ? 'text-green-600' : actualForMonth > 0 ? 'text-red-600' : ''}`}>
+                        {formatCurrency(actualForMonth)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       {category?.is_monthly ? (
-                        <span className={`font-semibold ${totalRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={``}>
                           {formatCurrency(totalRemaining)}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className={``}>
+                          {formatCurrency(remainingBudget)}
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -460,11 +475,11 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                                 style={{ backgroundColor: cat.color }}
                               />
                             )}
-                            <span className="font-medium">{cat.name}</span>
+                            <span className="">{cat.name}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{formatCurrency(spending?.actual || 0)}</span>
+                          <span className="">{formatCurrency(spending?.actual || 0)}</span>
                         </TableCell>
                         <TableCell>
                           <Button

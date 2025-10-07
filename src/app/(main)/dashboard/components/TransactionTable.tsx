@@ -126,7 +126,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
   };
 
   return (
-    <div className="rounded-lg border bg-white dark:bg-gray-800">
+    <div className="rounded-lg border bg-card">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Transactions</h2>
         <Button onClick={handleAddClick} size="sm">
@@ -244,7 +244,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
               <TableCell>{formatDate(transaction.date)}</TableCell>
               <TableCell className="hidden md:table-cell">
                 <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
-                  transaction.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                  transaction.type === 'income' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
                 }`}>
                   {transaction.type}
                 </span>
@@ -252,7 +252,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
               <TableCell className="hidden md:table-cell">
                 {transaction.category_name || 'Uncategorized'}
               </TableCell>
-              <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+              <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
                 <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
                 {formatCurrency(Number(transaction.amount))}
               </TableCell>

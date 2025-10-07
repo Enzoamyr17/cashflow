@@ -141,7 +141,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
   };
 
   return (
-    <div className="rounded-lg border bg-white dark:bg-gray-800">
+    <div className="rounded-lg border bg-card">
       <div className="flex items-center justify-between p-4 border-b">
         <h2 className="text-lg font-semibold">Budget Transactions</h2>
         <Button onClick={handleAddClick} size="sm">
@@ -190,7 +190,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <CategorySelect
-                  categories={budgetedCategories}
+                  categories={categories}
                   value={newTransaction.category_id}
                   onValueChange={(value) => setNewTransaction({ ...newTransaction, category_id: value })}
                   userId={userId}
@@ -273,11 +273,11 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             const isCompleted = !transaction.is_planned || transaction.is_completed;
 
             return (
-              <TableRow key={transaction.id} className={isCompleted ? 'opacity-60' : ''}>
+              <TableRow key={transaction.id} className={isCompleted ? '' : 'bg-muted/80 dark:bg-white/20'}>
                 <TableCell>{formatDate(transaction.date)}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
-                    transaction.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    transaction.type === 'income' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
                   }`}>
                     {transaction.type}
                   </span>
@@ -328,11 +328,11 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
       <TransactionModal
         open={showModal}
         onOpenChange={setShowModal}
-        categories={budgetedCategories}
+        categories={categories}
         userId={userId}
         onSave={handleModalSave}
         showPlannedToggle={true}
-        filterBudgetedCategories={true}
+        filterBudgetedCategories={false}
       />
 
       <ConfirmDialog

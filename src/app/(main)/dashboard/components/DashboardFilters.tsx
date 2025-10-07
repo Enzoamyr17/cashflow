@@ -18,7 +18,7 @@ export function DashboardFilters({ categories }: DashboardFiltersProps) {
   const [localEndDate, setLocalEndDate] = useState(endDate || '');
 
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-white p-4 dark:bg-gray-800">
+    <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4">
       <div className="flex-1 min-w-[200px]">
         <label className="mb-2 block text-sm font-medium">Start Date</label>
         <Input

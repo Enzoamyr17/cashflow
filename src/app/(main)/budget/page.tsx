@@ -57,9 +57,16 @@ export default function BudgetPage() {
     <div className="space-y-6">
       <BudgetHeader
         startingBalance={user?.starting_balance || 0}
+        timeFrameMonths={budgetSummary ? budgetSummary.timeFrameDays / 30 : 0}
       />
       {budgetSummary && (
-        <BudgetMetrics summary={budgetSummary} />
+        <BudgetMetrics
+          summary={budgetSummary}
+          categoryBreakdown={categoryBreakdown || []}
+          unbudgetedBreakdown={unbudgetedCategoryBreakdown || []}
+          categories={categories || []}
+          timeFrameMonths={budgetSummary.timeFrameDays / 30}
+        />
       )}
       <CategoryBreakdownCard
         breakdown={categoryBreakdown || []}

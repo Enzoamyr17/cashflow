@@ -18,56 +18,60 @@ export function DashboardFilters({ categories }: DashboardFiltersProps) {
   const [localEndDate, setLocalEndDate] = useState(endDate || '');
 
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4">
-      <div className="flex-1 min-w-[200px]">
-        <label className="mb-2 block text-sm font-medium">Start Date</label>
-        <Input
-          type="date"
-          value={localStartDate}
-          onChange={(e) => setLocalStartDate(e.target.value)}
-          onBlur={(e) => setStartDate(e.target.value || undefined)}
-        />
+    <div className="flex flex-wrap justify-evenly items-end gap-4 rounded-lg border bg-card p-4">
+      <div className="flex flex-nowrap gap-4">
+        <div className="w-1/2">
+          <label className="mb-2 block text-sm font-medium">Start Date</label>
+          <Input
+            type="date"
+            value={localStartDate}
+            onChange={(e) => setLocalStartDate(e.target.value)}
+            onBlur={(e) => setStartDate(e.target.value || undefined)}
+          />
+        </div>
+
+        <div className="w-1/2">
+          <label className="mb-2 block text-sm font-medium">End Date</label>
+          <Input
+            type="date"
+            value={localEndDate}
+            onChange={(e) => setLocalEndDate(e.target.value)}
+            onBlur={(e) => setEndDate(e.target.value || undefined)}
+          />
+        </div>
       </div>
 
-      <div className="flex-1 min-w-[200px]">
-        <label className="mb-2 block text-sm font-medium">End Date</label>
-        <Input
-          type="date"
-          value={localEndDate}
-          onChange={(e) => setLocalEndDate(e.target.value)}
-          onBlur={(e) => setEndDate(e.target.value || undefined)}
-        />
-      </div>
+      <div className="flex flex-nowrap gap-4">
+        <div className="w-1/2">
+          <label className="mb-2 block text-sm font-medium">Type</label>
+          <Select value={type || 'all'} onValueChange={(value) => setType(value === 'all' ? undefined : value as 'income' | 'expense')}>
+            <SelectTrigger>
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+              <SelectItem value="expense">Expense</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="flex-1 min-w-[200px]">
-        <label className="mb-2 block text-sm font-medium">Type</label>
-        <Select value={type || 'all'} onValueChange={(value) => setType(value === 'all' ? undefined : value as 'income' | 'expense')}>
-          <SelectTrigger>
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="income">Income</SelectItem>
-            <SelectItem value="expense">Expense</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex-1 min-w-[200px]">
-        <label className="mb-2 block text-sm font-medium">Category</label>
-        <Select value={categoryId || 'all'} onValueChange={(value) => setCategoryId(value === 'all' ? undefined : value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-1/2">
+          <label className="mb-2 block text-sm font-medium">Category</label>
+          <Select value={categoryId || 'all'} onValueChange={(value) => setCategoryId(value === 'all' ? undefined : value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Button variant="outline" onClick={clearFilters} size="icon">

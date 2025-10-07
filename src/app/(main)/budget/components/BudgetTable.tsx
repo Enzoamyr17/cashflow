@@ -12,6 +12,7 @@ import { Trash2, Plus, Check } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CategorySelect } from '@/components/common/CategorySelect';
+import { CreateModal } from '@/components/common/CreateModal';
 import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
@@ -25,7 +26,9 @@ const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Ot
 
 export function BudgetTable({ transactions, categories, userId }: BudgetTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -57,9 +60,16 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
 
   const handleAddClick = () => {
     if (isMobile) {
-      setShowModal(true);
+      setShowCreateModal(true);
     } else {
       setShowAddRow(!showAddRow);
+    }
+  };
+
+  const handleTransactionClick = (transaction: TransactionWithCategory) => {
+    if (isMobile) {
+      setSelectedTransaction(transaction);
+      setShowViewModal(true);
     }
   };
 
@@ -158,9 +168,9 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             <TableHead className="hidden md:table-cell">Category</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
-            <TableHead>Notes</TableHead>
+            <TableHead className="hidden lg:table-cell">Notes</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="hidden md:table-cell w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -273,7 +283,11 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
             const isCompleted = !transaction.is_planned || transaction.is_completed;
 
             return (
-              <TableRow key={transaction.id} className={isCompleted ? '' : 'bg-muted/80 dark:bg-white/20'}>
+              <TableRow
+                key={transaction.id}
+                onClick={() => handleTransactionClick(transaction)}
+                className={`${isCompleted ? '' : 'bg-muted/80 dark:bg-white/20'} ${isMobile ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+              >
                 <TableCell>{formatDate(transaction.date)}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
@@ -288,7 +302,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                   {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount))}
                 </TableCell>
                 <TableCell>{transaction.method}</TableCell>
-                <TableCell className="max-w-40 md:max-w-none text-ellipsis overflow-hidden whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                <TableCell className="max-w-40 md:max-w-none text-ellipsis overflow-hidden whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 hidden lg:table-cell">
                   {transaction.notes || '-'}
                 </TableCell>
                 <TableCell>
@@ -309,7 +323,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                     </Button>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -325,15 +339,31 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
         </TableBody>
       </Table>
 
-      <TransactionModal
-        open={showModal}
-        onOpenChange={setShowModal}
+      <CreateModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
         categories={categories}
         userId={userId}
         onSave={handleModalSave}
         showPlannedToggle={true}
         filterBudgetedCategories={false}
       />
+
+      {selectedTransaction && (
+        <TransactionModal
+          open={showViewModal}
+          onOpenChange={setShowViewModal}
+          transaction={selectedTransaction}
+          onDelete={() => {
+            setDeleteId(selectedTransaction.id);
+            setShowViewModal(false);
+          }}
+          onComplete={async () => {
+            await handleComplete(selectedTransaction.id);
+            setShowViewModal(false);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

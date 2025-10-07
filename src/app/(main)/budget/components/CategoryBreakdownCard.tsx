@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CategoryBreakdown, Category, Transaction } from '@/types';
 import { formatCurrency } from '@/lib/formatters';
-import { Edit2, Check, X, EyeOff, Plus } from 'lucide-react';
+import { Edit2, Check, X, EyeOff, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { updateCategory } from '@/server/categories';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
   const [editIsMonthly, setEditIsMonthly] = useState<boolean>(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [isExpanded, setIsExpanded] = useState(false);
   const queryClient = useQueryClient();
 
   // Get categories that are not currently budgeted
@@ -225,31 +226,37 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle>Category Breakdown</CardTitle>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-md  text-muted-foreground">
-                Budget for: {new Date(currentDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-            {hiddenCategories.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddCategory(!showAddCategory)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Category
-              </Button>
+            {isExpanded ? (
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
             )}
           </div>
+          {isExpanded && (
+            <div className="flex items-center gap-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2">
+
+              </div>
+              {hiddenCategories.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAddCategory(!showAddCategory)}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Category
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </CardHeader>
-      <CardContent>
+      {isExpanded && (
+        <CardContent>
         {showAddCategory && hiddenCategories.length > 0 && (
           <div className="mb-4 p-4 border rounded-lg bg-muted/50">
             <p className="text-sm  mb-2">Select a category to add to budget:</p>
@@ -298,7 +305,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                 <TableRow>
                   <TableHead>Category</TableHead>
                   <TableHead>Budget</TableHead>
-                  <TableHead>Total Budget</TableHead>
+                  <TableHead className="hidden lg:table-cell">Total Budget</TableHead>
                   <TableHead>Spent</TableHead>
                   <TableHead>Remaining</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -336,7 +343,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                       <div className="flex items-center space-x-2">
                         {cat.categoryColor && (
                           <div
-                            className="h-2 w-2 rounded-full flex-shrink-0"
+                            className="hidden lg:block h-2 w-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: cat.categoryColor }}
                           />
                         )}
@@ -382,7 +389,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                         </div>
                       ) : (
                         <div className="flex justify-start items-center">
-                          <div className="flex items-center min-w-28">
+                          <div className="flex items-center md:min-w-28">
                             <span className="">{formatCurrency(cat.planned)}</span>
                             {category?.is_monthly && (
                               <span className="text-xs text-muted-foreground ml-1">/mo</span>
@@ -397,7 +404,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                         <span className="">
                           {formatCurrency(totalBudget)}
                         </span>
@@ -504,7 +511,8 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
             </Table>
           </div>
         )}
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }

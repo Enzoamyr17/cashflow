@@ -23,7 +23,7 @@ export function BudgetHeader({ startingBalance, timeFrameMonths }: BudgetHeaderP
         <CardTitle>Budget Settings</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
           <div>
             <Label htmlFor="startDate">Start Date</Label>
             <Input

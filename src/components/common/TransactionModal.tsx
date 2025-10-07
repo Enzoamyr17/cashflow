@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Category, PaymentMethod, TransactionType } from '@/types';
+import { TransactionWithCategory } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -10,184 +9,104 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CategorySelect } from '@/components/common/CategorySelect';
-import { getTodayString } from '@/lib/formatters';
+import { formatCurrency, formatDate } from '@/lib/formatters';
+import { Trash2, Check } from 'lucide-react';
 
 interface TransactionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  categories: Category[];
-  userId: string;
-  onSave: (transaction: {
-    date: string;
-    type: TransactionType;
-    category_id: string;
-    amount: string;
-    method: PaymentMethod;
-    notes: string;
-    is_planned?: boolean;
-  }) => void;
-  showPlannedToggle?: boolean;
-  defaultType?: TransactionType;
-  filterBudgetedCategories?: boolean;
+  transaction: TransactionWithCategory;
+  onDelete: () => void;
+  onComplete?: () => void;
 }
-
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other Bank', 'Others'];
 
 export function TransactionModal({
   open,
   onOpenChange,
-  categories,
-  userId,
-  onSave,
-  showPlannedToggle = false,
-  defaultType = 'expense',
-  filterBudgetedCategories = false,
+  transaction,
+  onDelete,
+  onComplete,
 }: TransactionModalProps) {
-  const [formData, setFormData] = useState({
-    date: getTodayString(),
-    type: defaultType,
-    category_id: '',
-    amount: '',
-    method: 'Cash' as PaymentMethod,
-    notes: '',
-    is_planned: true,
-  });
-
-  const filteredCategories = filterBudgetedCategories
-    ? categories.filter(cat => cat.is_budgeted !== false)
-    : categories;
-
-  const handleSave = () => {
-    onSave(formData);
-    // Reset form
-    setFormData({
-      date: getTodayString(),
-      type: defaultType,
-      category_id: '',
-      amount: '',
-      method: 'Cash',
-      notes: '',
-      is_planned: true,
-    });
-    onOpenChange(false);
-  };
-
+  const isPlanned = transaction.is_planned && !transaction.is_completed;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Transaction</DialogTitle>
+          <DialogTitle>Transaction Details</DialogTitle>
           <DialogDescription>
-            Add a new transaction to your budget.
+            View details of this transaction.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            />
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Date:</span>
+            <span className="col-span-2 text-sm">{formatDate(transaction.date)}</span>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="type">Type</Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value: TransactionType) => setFormData({ ...formData, type: value })}
-            >
-              <SelectTrigger id="type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Type:</span>
+            <span className="col-span-2">
+              <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
+                transaction.type === 'income' ? 'text-green-800 dark:text-green-200 bg-green-100 dark:bg-green-900' : 'text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-900'
+              }`}>
+                {transaction.type}
+              </span>
+            </span>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="category">Category</Label>
-            <CategorySelect
-              categories={filteredCategories}
-              value={formData.category_id}
-              onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-              userId={userId}
-              placeholder="Select category..."
-            />
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Category:</span>
+            <span className="col-span-2 text-sm">{transaction.category_name || 'Uncategorized'}</span>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="amount">Amount</Label>
-            <Input
-              id="amount"
-              type="number"
-              placeholder="0.00"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            />
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Amount:</span>
+            <span className={`col-span-2 text-lg font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
+              {formatCurrency(Number(transaction.amount))}
+            </span>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="method">Payment Method</Label>
-            <Select
-              value={formData.method}
-              onValueChange={(value: PaymentMethod) => setFormData({ ...formData, method: value })}
-            >
-              <SelectTrigger id="method">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {method}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Method:</span>
+            <span className="col-span-2 text-sm">{transaction.method}</span>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
-            <Input
-              id="notes"
-              placeholder="Add notes..."
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            />
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium text-muted-foreground">Notes:</span>
+            <span className="col-span-2 text-sm">{transaction.notes || '-'}</span>
           </div>
 
-          {showPlannedToggle && (
-            <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.is_planned ? 'planned' : 'completed'}
-                onValueChange={(value) => setFormData({ ...formData, is_planned: value === 'planned' })}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
+          {isPlanned && (
+            <div className="grid grid-cols-3 items-center gap-4">
+              <span className="text-sm font-medium text-muted-foreground">Status:</span>
+              <span className="col-span-2">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Planned
+                </span>
+              </span>
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+        <div className="flex justify-between gap-2">
+          <Button
+            variant="destructive"
+            onClick={onDelete}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
           </Button>
-          <Button onClick={handleSave}>
-            Save Transaction
-          </Button>
+          <div className="flex gap-2">
+            {isPlanned && onComplete && (
+              <Button onClick={onComplete} className="flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                Complete
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

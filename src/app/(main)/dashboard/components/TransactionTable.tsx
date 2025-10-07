@@ -12,6 +12,7 @@ import { Trash2, Plus } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { CategorySelect } from '@/components/common/CategorySelect';
+import { CreateModal } from '@/components/common/CreateModal';
 import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
@@ -25,7 +26,9 @@ const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Ot
 
 export function TransactionTable({ transactions, categories, userId }: TransactionTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -52,9 +55,16 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
 
   const handleAddClick = () => {
     if (isMobile) {
-      setShowModal(true);
+      setShowCreateModal(true);
     } else {
       setShowAddRow(!showAddRow);
+    }
+  };
+
+  const handleTransactionClick = (transaction: TransactionWithCategory) => {
+    if (isMobile) {
+      setSelectedTransaction(transaction);
+      setShowViewModal(true);
     }
   };
 
@@ -140,11 +150,11 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead className="hidden md:table-cell">Type</TableHead>
-            <TableHead className="hidden md:table-cell">Category</TableHead>
+            <TableHead>Category</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
-            <TableHead>Notes</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
+            <TableHead className="hidden md:table-cell">Notes</TableHead>
+            <TableHead className="hidden md:table-cell w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -240,8 +250,14 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
             if (dateCompare !== 0) return dateCompare;
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           }).map((transaction) => (
-            <TableRow key={transaction.id}>
+            <TableRow
+              key={transaction.id}
+              onClick={() => handleTransactionClick(transaction)}
+              className={isMobile ? 'cursor-pointer hover:bg-muted/50' : ''}
+            >
+
               <TableCell>{formatDate(transaction.date)}</TableCell>
+
               <TableCell className="hidden md:table-cell">
                 <span className={`inline-flex px-2 py-1 rounded text-xs font-semibold ${
                   transaction.type === 'income' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
@@ -249,16 +265,22 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
                   {transaction.type}
                 </span>
               </TableCell>
-              <TableCell className="hidden md:table-cell">
+
+              <TableCell>
                 {transaction.category_name || 'Uncategorized'}
               </TableCell>
+
               <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
-                <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
                 {formatCurrency(Number(transaction.amount))}
               </TableCell>
+
               <TableCell>{transaction.method}</TableCell>
-              <TableCell className="text-sm text-gray-600 dark:text-gray-400">{transaction.notes || '-'}</TableCell>
-              <TableCell>
+
+              <TableCell className="hidden md:table-cell text-sm text-gray-600 dark:text-gray-400">
+                {transaction.notes || '-'}
+              </TableCell>
+
+              <TableCell className="hidden md:table-cell">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -268,18 +290,31 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
                   <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
               </TableCell>
+
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      <TransactionModal
-        open={showModal}
-        onOpenChange={setShowModal}
+      <CreateModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
         categories={categories}
         userId={userId}
         onSave={handleModalSave}
       />
+
+      {selectedTransaction && (
+        <TransactionModal
+          open={showViewModal}
+          onOpenChange={setShowViewModal}
+          transaction={selectedTransaction}
+          onDelete={() => {
+            setDeleteId(selectedTransaction.id);
+            setShowViewModal(false);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteId}

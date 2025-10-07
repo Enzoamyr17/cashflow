@@ -39,141 +39,133 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
   const actualChange = summary.actualIncome - summary.actualExpenses;
 
   return (
-    <div className="grid gap-4 md:grid-cols-5">
-      {/* Column 1: Starting Balance */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Starting Balance</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-semibold ${
-              summary.startingBudget >= 0 ? 'text-green-600' : 'text-red-700'
-            }`}>
-              {formatCurrency(summary.startingBudget)}
-            </div>
+    <div className="flex flex-wrap justify-evenly items-center gap-2">
+      {/* Starting Balance */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Starting Balance</CardTitle>
+          <Wallet className="h-4 w-4 hidden lg:block text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-semibold ${
+            summary.startingBudget >= 0 ? 'text-green-600' : 'text-red-700'
+          }`}>
+            {formatCurrency(summary.startingBudget)}
+          </div>
+        </CardContent>
+      </Card>
 
-          </CardContent>
-        </Card>
-      </div>
+      {/* Expenses */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+          <TrendingDown className="h-4 w-4 hidden lg:block text-red-700" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-semibold text-red-700">
+            {formatCurrency(summary.actualExpenses)}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Column 2: Expenses */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-700" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-red-700">
-              {formatCurrency(summary.actualExpenses)}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Income */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Income</CardTitle>
+          <TrendingUp className="h-4 w-4 hidden lg:block text-green-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-semibold text-green-600">
+            {formatCurrency(summary.actualIncome)}
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-700" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-red-700">
-              {formatCurrency(budgetedExpenses)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Change */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Change</CardTitle>
+          <ArrowRightLeft className="h-4 w-4 hidden lg:block text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-semibold ${
+            actualChange >= 0 ? 'text-green-600' : 'text-red-700'
+          }`}>
+            {formatCurrency(actualChange)}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Column 3: Income */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Income</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-green-600">
-              {formatCurrency(summary.actualIncome)}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Balance */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Balance</CardTitle>
+          <Wallet className="h-4 w-4 hidden lg:block text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-semibold ${
+            actualBalance >= 0 ? 'text-green-600' : 'text-red-700'
+          }`}>
+            {formatCurrency(actualBalance)}
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unbudgeted Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-700" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-semibold text-red-700">
-              {formatCurrency(unbudgetedExpenses)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Budgeted Expenses */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
+          <TrendingDown className="h-4 w-4 hidden lg:block text-red-700" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-semibold text-red-700">
+            {formatCurrency(budgetedExpenses)}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Column 4: Change */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Change</CardTitle>
-            <ArrowRightLeft className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-semibold ${
-              actualChange >= 0 ? 'text-green-600' : 'text-red-700'
-            }`}>
-              {formatCurrency(actualChange)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receivables</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-semibold ${
-              receivables > 0 ? 'text-green-600' : 'text-red-700'
-            }`}>
-              {formatCurrency(receivables)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Unbudgeted Expenses */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Unbudgeted Expenses</CardTitle>
+          <TrendingDown className="h-4 w-4 hidden lg:block text-red-700" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-semibold text-red-700">
+            {formatCurrency(unbudgetedExpenses)}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Column 5: Balances */}
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-semibold ${
-              actualBalance >= 0 ? 'text-green-600' : 'text-red-700'
-            }`}>
-              {formatCurrency(actualBalance)}
-            </div>
+      {/* Receivables */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Receivables</CardTitle>
+          <TrendingUp className="h-4 w-4 hidden lg:block text-green-600" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-semibold ${
+            receivables > 0 ? 'text-green-600' : 'text-red-700'
+          }`}>
+            {formatCurrency(receivables)}
+          </div>
+        </CardContent>
+      </Card>
 
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unbudgeted Balance</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-semibold ${
-              unbudgetedBalance >= 0 ? 'text-green-600' : 'text-red-700'
-            }`}>
-              {formatCurrency(unbudgetedBalance)}
-            </div>
-
-          </CardContent>
-        </Card>
-      </div>
+      {/* Unbudgeted Balance */}
+      <Card className="w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Unbudgeted Balance</CardTitle>
+          <Wallet className="h-4 w-4 hidden lg:block text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-semibold ${
+            unbudgetedBalance >= 0 ? 'text-green-600' : 'text-red-700'
+          }`}>
+            {formatCurrency(unbudgetedBalance)}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

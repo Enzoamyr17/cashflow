@@ -9,7 +9,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user has a valid session
+    // Check if user has a valid sessions
     const session = getSession();
 
     if (session) {

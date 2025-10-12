@@ -25,7 +25,8 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
 
   // Calculate unbudgeted expenses (actual expenses from unbudgeted categories)
   const unbudgetedExpenses = Math.abs(unbudgetedBreakdown.reduce((total, cat) => {
-    return total + cat.actual;
+    // Only include negative values (expenses), skip positive values (income)
+    return cat.actual < 0 ? total + cat.actual : total;
   }, 0));
 
   // Calculate receivables (all planned incomes)

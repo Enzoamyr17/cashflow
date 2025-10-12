@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Moon, Sun, LogOut, DollarSign, Wallet, ChartArea, List } from 'lucide-react';
+import { Moon, Sun, LogOut, DollarSign, Wallet, ChartArea, List, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 
 export function Navbar() {
@@ -64,6 +64,15 @@ export function Navbar() {
             <span className="hidden md:block text-sm text-gray-600 dark:text-gray-300">
               {user?.name || user?.user_code}
             </span>
+            <Link href="/settings">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Settings"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            </Link>
             {mounted && (
               <Button
                 variant="ghost"

@@ -1,40 +1,66 @@
-import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prismaClient';
 import { Category, CreateCategoryInput, UpdateCategoryInput } from '@/types';
 
 /**
  * Get all categories for a user
  */
 export async function getCategories(userId: string): Promise<Category[]> {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('user_id', userId)
-    .order('name', { ascending: true });
+  try {
+    const data = await prisma.categories.findMany({
+      where: {
+        user_id: userId,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
 
-  if (error) {
+    // Convert Decimal fields to numbers
+    return data.map((category) => ({
+      id: category.id,
+      user_id: category.user_id,
+      name: category.name,
+      color: category.color,
+      created_at: category.created_at.toISOString(),
+      planned_amount: category.planned_amount ? Number(category.planned_amount) : null,
+      is_budgeted: category.is_budgeted,
+      is_monthly: category.is_monthly,
+    })) as Category[];
+  } catch (error) {
     console.error('Error fetching categories:', error);
     return [];
   }
-
-  return data as Category[];
 }
 
 /**
  * Get category by ID
  */
 export async function getCategoryById(categoryId: string): Promise<Category | null> {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('id', categoryId)
-    .single();
+  try {
+    const data = await prisma.categories.findUnique({
+      where: {
+        id: categoryId,
+      },
+    });
 
-  if (error) {
+    if (!data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      color: data.color,
+      created_at: data.created_at.toISOString(),
+      planned_amount: data.planned_amount ? Number(data.planned_amount) : null,
+      is_budgeted: data.is_budgeted,
+      is_monthly: data.is_monthly,
+    } as Category;
+  } catch (error) {
     console.error('Error fetching category:', error);
     return null;
   }
-
-  return data as Category;
 }
 
 /**
@@ -44,25 +70,31 @@ export async function createCategory(
   userId: string,
   input: CreateCategoryInput
 ): Promise<Category> {
-  const { data, error } = await supabase
-    .from('categories')
-    .insert([
-      {
+  try {
+    const data = await prisma.categories.create({
+      data: {
         user_id: userId,
         name: input.name,
         color: input.color || null,
         planned_amount: input.planned_amount || 0,
         is_budgeted: input.is_budgeted !== undefined ? input.is_budgeted : true,
       },
-    ])
-    .select()
-    .single();
+    });
 
-  if (error || !data) {
-    throw new Error(`Failed to create category: ${error?.message || 'Unknown error'}`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      color: data.color,
+      created_at: data.created_at.toISOString(),
+      planned_amount: data.planned_amount ? Number(data.planned_amount) : null,
+      is_budgeted: data.is_budgeted,
+      is_monthly: data.is_monthly,
+    } as Category;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to create category: ${message}`);
   }
-
-  return data as Category;
 }
 
 /**
@@ -71,27 +103,42 @@ export async function createCategory(
 export async function updateCategory(input: UpdateCategoryInput): Promise<Category> {
   const { id, ...updates } = input;
 
-  const { data, error } = await supabase
-    .from('categories')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  try {
+    const data = await prisma.categories.update({
+      where: {
+        id,
+      },
+      data: updates,
+    });
 
-  if (error || !data) {
-    throw new Error(`Failed to update category: ${error?.message || 'Unknown error'}`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      name: data.name,
+      color: data.color,
+      created_at: data.created_at.toISOString(),
+      planned_amount: data.planned_amount ? Number(data.planned_amount) : null,
+      is_budgeted: data.is_budgeted,
+      is_monthly: data.is_monthly,
+    } as Category;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to update category: ${message}`);
   }
-
-  return data as Category;
 }
 
 /**
  * Delete category
  */
 export async function deleteCategory(categoryId: string): Promise<void> {
-  const { error } = await supabase.from('categories').delete().eq('id', categoryId);
-
-  if (error) {
-    throw new Error(`Failed to delete category: ${error.message}`);
+  try {
+    await prisma.categories.delete({
+      where: {
+        id: categoryId,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to delete category: ${message}`);
   }
 }

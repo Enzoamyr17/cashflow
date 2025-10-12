@@ -35,7 +35,7 @@ interface CreateModalProps {
   filterBudgetedCategories?: boolean;
 }
 
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other Bank', 'Others'];
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other_Bank', 'Others'];
 
 export function CreateModal({
   open,

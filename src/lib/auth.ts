@@ -1,55 +1,64 @@
-import { supabase } from './supabaseClient';
 import { saveSession, clearSession } from './storage';
 import { User } from '@/types';
 
 /**
- * Verify user code and log in
- * If user doesn't exist, creates a new user
+ * Login with user code (calls API route)
  */
 export async function loginWithUserCode(userCode: string): Promise<User> {
   if (!userCode || userCode.trim() === '') {
     throw new Error('User code is required');
   }
 
-  try {
-    // Check if user exists (case-sensitive)
-    const { data: users, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('user_code', userCode)
-      .limit(1);
+  const response = await fetch('/api/auth/login-usercode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userCode }),
+  });
 
-    if (fetchError) {
-      throw new Error(`Failed to verify user: ${fetchError.message}`);
-    }
+  const data = await response.json();
 
-    let user: User;
-
-    if (users && users.length > 0) {
-      // User exists, log in
-      user = users[0] as User;
-    } else {
-      // User doesn't exist, create new user
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert([{ user_code: userCode }])
-        .select()
-        .single();
-
-      if (createError || !newUser) {
-        throw new Error(`Failed to create user: ${createError?.message || 'Unknown error'}`);
-      }
-
-      user = newUser as User;
-    }
-
-    // Save session
-    saveSession(user.id, user.user_code, user.name);
-
-    return user;
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('Login failed');
+  if (!response.ok) {
+    throw new Error(data.error || 'Login failed');
   }
+
+  const user = data.user;
+
+  // Save session
+  saveSession(user.id, user.user_code, user.name, user.email, user.email_verified);
+
+  return user;
+}
+
+/**
+ * Login with email and password (calls API route)
+ */
+export async function loginWithEmailPassword(email: string, password: string): Promise<User> {
+  if (!email || email.trim() === '') {
+    throw new Error('Email is required');
+  }
+
+  if (!password || password.trim() === '') {
+    throw new Error('Password is required');
+  }
+
+  const response = await fetch('/api/auth/login-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Login failed');
+  }
+
+  const user = data.user;
+
+  // Save session
+  saveSession(user.id, user.user_code, user.name, user.email, user.email_verified);
+
+  return user;
 }
 
 /**
@@ -60,19 +69,20 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Update user name
+ * Update user name (calls API route)
  */
 export async function updateUserName(userId: string, name: string): Promise<User> {
-  const { data, error } = await supabase
-    .from('users')
-    .update({ name })
-    .eq('id', userId)
-    .select()
-    .single();
+  const response = await fetch('/api/user/update-name', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, name }),
+  });
 
-  if (error || !data) {
-    throw new Error(`Failed to update user name: ${error?.message || 'Unknown error'}`);
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to update user name');
   }
 
-  return data as User;
+  return data.user;
 }

@@ -1,6 +1,6 @@
 export type TransactionType = 'income' | 'expense';
 
-export type PaymentMethod = 'Cash' | 'Gcash' | 'Seabank' | 'UBP' | 'Other Bank' | 'Others';
+export type PaymentMethod = 'Cash' | 'Gcash' | 'Seabank' | 'UBP' | 'Other_Bank' | 'Others';
 
 export interface Transaction {
   id: string;

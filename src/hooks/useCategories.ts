@@ -1,13 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-} from '@/server/categories';
-import { CreateCategoryInput, UpdateCategoryInput } from '@/types';
+import { CreateCategoryInput, UpdateCategoryInput, Category } from '@/types';
 import { toast } from 'sonner';
 
 /**
@@ -16,9 +10,22 @@ import { toast } from 'sonner';
 export function useCategories(userId: string | undefined) {
   return useQuery({
     queryKey: ['categories', userId],
-    queryFn: () => {
+    queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
-      return getCategories(userId);
+
+      const response = await fetch('/api/categories/get', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch categories');
+      }
+
+      const data = await response.json();
+      return data.categories as Category[];
     },
     enabled: !!userId,
   });
@@ -31,7 +38,21 @@ export function useCreateCategory(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateCategoryInput) => createCategory(userId, input),
+    mutationFn: async (input: CreateCategoryInput) => {
+      const response = await fetch('/api/categories/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, input }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create category');
+      }
+
+      const data = await response.json();
+      return data.category;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Category created successfully');
@@ -49,7 +70,21 @@ export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateCategoryInput) => updateCategory(input),
+    mutationFn: async (input: UpdateCategoryInput) => {
+      const response = await fetch('/api/categories/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update category');
+      }
+
+      const data = await response.json();
+      return data.category;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Category updated successfully');
@@ -67,7 +102,20 @@ export function useDeleteCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (categoryId: string) => deleteCategory(categoryId),
+    mutationFn: async (categoryId: string) => {
+      const response = await fetch('/api/categories/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete category');
+      }
+
+      return;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Category deleted successfully');

@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getBudgetSummary, getCategoryBreakdownForBudget, getUnbudgetedCategoryBreakdown } from '@/server/analytics';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -41,9 +40,22 @@ export function useBudgetSummary(
 ) {
   return useQuery({
     queryKey: ['budgetSummary', userId, startDate, endDate, userStartingBalance, userCreatedAt],
-    queryFn: () => {
+    queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
-      return getBudgetSummary(userId, startDate, endDate, userStartingBalance, userCreatedAt);
+
+      const response = await fetch('/api/analytics/budget-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, startDate, endDate, userStartingBalance, userCreatedAt }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch budget summary');
+      }
+
+      const data = await response.json();
+      return data.summary;
     },
     enabled: !!userId && !!startDate && !!endDate,
   });
@@ -59,9 +71,22 @@ export function useCategoryBreakdown(
 ) {
   return useQuery({
     queryKey: ['categoryBreakdown', userId, startDate, endDate],
-    queryFn: () => {
+    queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
-      return getCategoryBreakdownForBudget(userId, startDate, endDate);
+
+      const response = await fetch('/api/analytics/category-breakdown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, startDate, endDate }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch category breakdown');
+      }
+
+      const data = await response.json();
+      return data.breakdown;
     },
     enabled: !!userId && !!startDate && !!endDate,
   });
@@ -77,9 +102,22 @@ export function useUnbudgetedCategoryBreakdown(
 ) {
   return useQuery({
     queryKey: ['unbudgetedCategoryBreakdown', userId, startDate, endDate],
-    queryFn: () => {
+    queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
-      return getUnbudgetedCategoryBreakdown(userId, startDate, endDate);
+
+      const response = await fetch('/api/analytics/unbudgeted-breakdown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, startDate, endDate }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch unbudgeted category breakdown');
+      }
+
+      const data = await response.json();
+      return data.breakdown;
     },
     enabled: !!userId && !!startDate && !!endDate,
   });

@@ -2,13 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getTransactions,
-  createTransaction,
-  updateTransaction,
-  deleteTransaction,
-  markTransactionCompleted,
-} from '@/server/transactions';
-import {
   CreateTransactionInput,
   UpdateTransactionInput,
   TransactionType,
@@ -33,9 +26,22 @@ export function useTransactions(
 ) {
   return useQuery({
     queryKey: ['transactions', userId, filters],
-    queryFn: () => {
+    queryFn: async () => {
       if (!userId) throw new Error('User ID is required');
-      return getTransactions(userId, filters);
+
+      const response = await fetch('/api/transactions/get', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, filters }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch transactions');
+      }
+
+      const data = await response.json();
+      return data.transactions as TransactionWithCategory[];
     },
     enabled: !!userId,
   });
@@ -48,7 +54,21 @@ export function useCreateTransaction(userId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: CreateTransactionInput) => createTransaction(userId, input),
+    mutationFn: async (input: CreateTransactionInput) => {
+      const response = await fetch('/api/transactions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, input }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create transaction');
+      }
+
+      const data = await response.json();
+      return data.transaction as TransactionWithCategory;
+    },
     onMutate: async (newTransaction) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['transactions'] });
@@ -122,7 +142,21 @@ export function useUpdateTransaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: UpdateTransactionInput) => updateTransaction(input),
+    mutationFn: async (input: UpdateTransactionInput) => {
+      const response = await fetch('/api/transactions/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update transaction');
+      }
+
+      const data = await response.json();
+      return data.transaction;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast.success('Transaction updated successfully');
@@ -140,7 +174,20 @@ export function useDeleteTransaction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (transactionId: string) => deleteTransaction(transactionId),
+    mutationFn: async (transactionId: string) => {
+      const response = await fetch('/api/transactions/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete transaction');
+      }
+
+      return;
+    },
     onMutate: async (transactionId) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['transactions'] });
@@ -196,7 +243,21 @@ export function useMarkTransactionCompleted() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (transactionId: string) => markTransactionCompleted(transactionId),
+    mutationFn: async (transactionId: string) => {
+      const response = await fetch('/api/transactions/mark-completed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to mark transaction as completed');
+      }
+
+      const data = await response.json();
+      return data.transaction;
+    },
     onMutate: async (transactionId) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['transactions'] });

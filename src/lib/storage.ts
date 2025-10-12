@@ -14,11 +14,19 @@ function getMidnightTonight(): string {
 /**
  * Saves user session to localStorage with expiry at midnight
  */
-export function saveSession(userId: string, userCode: string, name: string | null): void {
+export function saveSession(
+  userId: string,
+  userCode: string,
+  name: string | null,
+  email: string | null = null,
+  emailVerified: boolean = false
+): void {
   const session: UserSession = {
     userId,
     userCode,
     name,
+    email,
+    emailVerified,
     expiresAt: getMidnightTonight(),
   };
 

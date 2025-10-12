@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabaseClient';
+import { prisma } from '@/lib/prismaClient';
+import { Prisma } from '@/generated/prisma';
 import {
   Transaction,
   TransactionWithCategory,
@@ -21,75 +22,106 @@ export async function getTransactions(
     isCompleted?: boolean;
   }
 ): Promise<TransactionWithCategory[]> {
-  let query = supabase
-    .from('transactions')
-    .select(
-      `
-      *,
-      categories:category_id (
-        name,
-        color
-      )
-    `
-    )
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
+  try {
+    const where: Prisma.transactionsWhereInput = {
+      user_id: userId,
+    };
 
-  if (filters?.type) {
-    query = query.eq('type', filters.type);
-  }
+    if (filters?.type) {
+      where.type = filters.type;
+    }
 
-  if (filters?.categoryId) {
-    query = query.eq('category_id', filters.categoryId);
-  }
+    if (filters?.categoryId) {
+      where.category_id = filters.categoryId;
+    }
 
-  if (filters?.startDate) {
-    query = query.gte('date', filters.startDate);
-  }
+    if (filters?.startDate || filters?.endDate) {
+      where.date = {};
+      if (filters.startDate) {
+        where.date.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        where.date.lte = new Date(filters.endDate);
+      }
+    }
 
-  if (filters?.endDate) {
-    query = query.lte('date', filters.endDate);
-  }
+    if (filters?.isPlanned !== undefined) {
+      where.is_planned = filters.isPlanned;
+    }
 
-  if (filters?.isPlanned !== undefined) {
-    query = query.eq('is_planned', filters.isPlanned);
-  }
+    if (filters?.isCompleted !== undefined) {
+      where.is_completed = filters.isCompleted;
+    }
 
-  if (filters?.isCompleted !== undefined) {
-    query = query.eq('is_completed', filters.isCompleted);
-  }
+    const data = await prisma.transactions.findMany({
+      where,
+      include: {
+        categories: {
+          select: {
+            name: true,
+            color: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
 
-  const { data, error } = await query;
-
-  if (error) {
+    // Transform data to include category info and convert Decimal to number
+    return data.map((t) => ({
+      id: t.id,
+      user_id: t.user_id,
+      category_id: t.category_id,
+      type: t.type,
+      amount: Number(t.amount),
+      method: t.method,
+      notes: t.notes,
+      date: t.date.toISOString(),
+      is_planned: t.is_planned,
+      is_completed: t.is_completed,
+      created_at: t.created_at.toISOString(),
+      category_name: t.categories?.name || null,
+      category_color: t.categories?.color || null,
+    })) as TransactionWithCategory[];
+  } catch (error) {
     console.error('Error fetching transactions:', error);
     return [];
   }
-
-  // Transform data to include category info
-  return (data || []).map((t: Transaction & { categories?: { name: string; color: string } | null }) => ({
-    ...t,
-    category_name: t.categories?.name || null,
-    category_color: t.categories?.color || null,
-  })) as TransactionWithCategory[];
 }
 
 /**
  * Get transaction by ID
  */
 export async function getTransactionById(transactionId: string): Promise<Transaction | null> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('id', transactionId)
-    .single();
+  try {
+    const data = await prisma.transactions.findUnique({
+      where: {
+        id: transactionId,
+      },
+    });
 
-  if (error) {
+    if (!data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      category_id: data.category_id,
+      type: data.type,
+      amount: Number(data.amount),
+      method: data.method,
+      notes: data.notes,
+      date: data.date.toISOString(),
+      is_planned: data.is_planned,
+      is_completed: data.is_completed,
+      created_at: data.created_at.toISOString(),
+    } as Transaction;
+  } catch (error) {
     console.error('Error fetching transaction:', error);
     return null;
   }
-
-  return data as Transaction;
 }
 
 /**
@@ -99,41 +131,48 @@ export async function createTransaction(
   userId: string,
   input: CreateTransactionInput
 ): Promise<TransactionWithCategory> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert([
-      {
+  try {
+    const data = await prisma.transactions.create({
+      data: {
         user_id: userId,
         category_id: input.category_id,
         type: input.type,
         amount: input.amount,
         method: input.method,
         notes: input.notes || null,
-        date: input.date,
+        date: new Date(input.date),
         is_planned: input.is_planned || false,
         is_completed: input.is_completed || false,
       },
-    ])
-    .select(`
-      *,
-      categories:category_id (
-        name,
-        color
-      )
-    `)
-    .single();
+      include: {
+        categories: {
+          select: {
+            name: true,
+            color: true,
+          },
+        },
+      },
+    });
 
-  if (error || !data) {
-    throw new Error(`Failed to create transaction: ${error?.message || 'Unknown error'}`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      category_id: data.category_id,
+      type: data.type,
+      amount: Number(data.amount),
+      method: data.method,
+      notes: data.notes,
+      date: data.date.toISOString(),
+      is_planned: data.is_planned,
+      is_completed: data.is_completed,
+      created_at: data.created_at.toISOString(),
+      category_name: data.categories?.name || null,
+      category_color: data.categories?.color || null,
+    } as TransactionWithCategory;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to create transaction: ${message}`);
   }
-
-  // Transform to include category info
-  const dataWithCategory = data as Transaction & { categories?: { name: string; color: string } | null };
-  return {
-    ...dataWithCategory,
-    category_name: dataWithCategory.categories?.name || null,
-    category_color: dataWithCategory.categories?.color || null,
-  } as TransactionWithCategory;
 }
 
 /**
@@ -142,28 +181,52 @@ export async function createTransaction(
 export async function updateTransaction(input: UpdateTransactionInput): Promise<Transaction> {
   const { id, ...updates } = input;
 
-  const { data, error } = await supabase
-    .from('transactions')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  try {
+    // Convert date if present
+    const updateData: Prisma.transactionsUpdateInput = { ...updates };
+    if (updateData.date) {
+      updateData.date = new Date(updateData.date as string);
+    }
 
-  if (error || !data) {
-    throw new Error(`Failed to update transaction: ${error?.message || 'Unknown error'}`);
+    const data = await prisma.transactions.update({
+      where: {
+        id,
+      },
+      data: updateData,
+    });
+
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      category_id: data.category_id,
+      type: data.type,
+      amount: Number(data.amount),
+      method: data.method,
+      notes: data.notes,
+      date: data.date.toISOString(),
+      is_planned: data.is_planned,
+      is_completed: data.is_completed,
+      created_at: data.created_at.toISOString(),
+    } as Transaction;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to update transaction: ${message}`);
   }
-
-  return data as Transaction;
 }
 
 /**
  * Delete transaction
  */
 export async function deleteTransaction(transactionId: string): Promise<void> {
-  const { error } = await supabase.from('transactions').delete().eq('id', transactionId);
-
-  if (error) {
-    throw new Error(`Failed to delete transaction: ${error.message}`);
+  try {
+    await prisma.transactions.delete({
+      where: {
+        id: transactionId,
+      },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to delete transaction: ${message}`);
   }
 }
 
@@ -171,16 +234,32 @@ export async function deleteTransaction(transactionId: string): Promise<void> {
  * Mark planned transaction as completed
  */
 export async function markTransactionCompleted(transactionId: string): Promise<Transaction> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .update({ is_completed: true, is_planned: false })
-    .eq('id', transactionId)
-    .select()
-    .single();
+  try {
+    const data = await prisma.transactions.update({
+      where: {
+        id: transactionId,
+      },
+      data: {
+        is_completed: true,
+        is_planned: false,
+      },
+    });
 
-  if (error || !data) {
-    throw new Error(`Failed to mark transaction as completed: ${error?.message || 'Unknown error'}`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      category_id: data.category_id,
+      type: data.type,
+      amount: Number(data.amount),
+      method: data.method,
+      notes: data.notes,
+      date: data.date.toISOString(),
+      is_planned: data.is_planned,
+      is_completed: data.is_completed,
+      created_at: data.created_at.toISOString(),
+    } as Transaction;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to mark transaction as completed: ${message}`);
   }
-
-  return data as Transaction;
 }

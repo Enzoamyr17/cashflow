@@ -22,7 +22,7 @@ interface TransactionTableProps {
   userId: string;
 }
 
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other Bank', 'Others'];
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other_Bank', 'Others'];
 
 export function TransactionTable({ transactions, categories, userId }: TransactionTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);

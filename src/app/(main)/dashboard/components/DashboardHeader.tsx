@@ -6,6 +6,7 @@ import { calculateBalance, calculateTotalIncome, calculateTotalExpenses } from '
 import { formatCurrency } from '@/lib/formatters';
 import { TrendingUp, TrendingDown, Wallet, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useCategories } from '@/hooks/useCategories';
 
 interface DashboardHeaderProps {
   transactions: TransactionWithCategory[];
@@ -13,9 +14,10 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ transactions }: DashboardHeaderProps) {
   const { user } = useAuth();
-  const transactionBalance = calculateBalance(transactions);
+  const { data: categories } = useCategories(user?.id);
+  const transactionBalance = calculateBalance(transactions, categories || []);
   const totalIncome = calculateTotalIncome(transactions);
-  const totalExpenses = calculateTotalExpenses(transactions);
+  const totalExpenses = calculateTotalExpenses(transactions, categories || []);
   const currentBalance = (user?.starting_balance || 0) + transactionBalance;
 
   const change = totalIncome - totalExpenses;

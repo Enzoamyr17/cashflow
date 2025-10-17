@@ -5,37 +5,102 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CategoryBreakdown, Category, Transaction } from '@/types';
+import { Category } from '@/types/category';
+import { Transaction } from '@/types/transaction';
 import { formatCurrency } from '@/lib/formatters';
 import { Edit2, Check, X, EyeOff, Plus, ChevronDown, ChevronUp } from 'lucide-react';
-import { updateCategory } from '@/server/categories';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
 interface CategoryBreakdownCardProps {
-  breakdown: CategoryBreakdown[];
-  unbudgetedBreakdown: CategoryBreakdown[];
+  budgetedCategories: Category[];
+  unbudgetedCategories: Category[];
   categories: Category[];
-  timeFrameMonths: number;
+  timeFrameMonths: string;
   transactions: Transaction[];
-  startDate: string;
-  endDate: string;
 }
 
-export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categories, timeFrameMonths, transactions, startDate, endDate }: CategoryBreakdownCardProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [editIsMonthly, setEditIsMonthly] = useState<boolean>(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [isExpanded, setIsExpanded] = useState(false);
+export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories, categories, timeFrameMonths, transactions }: CategoryBreakdownCardProps) {
   const queryClient = useQueryClient();
+  const currentDate = new Date().toISOString().split('T')[0];
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editIsMonthly, setEditIsMonthly] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
 
-  // Get categories that are not currently budgeted
-  const hiddenCategories = categories.filter(cat => cat.is_budgeted === false);
+  // Mutations
+  const toggleBudgetedMutation = useMutation({
+    mutationFn: async ({ categoryId, isBudgeted }: { categoryId: string; isBudgeted: boolean }) => {
+      const response = await fetch('/api/categories/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: categoryId, is_budgeted: isBudgeted }),
+      });
+      if (!response.ok) throw new Error('Failed to update category');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Category updated successfully');
+      window.location.reload();
+    },
+    onError: () => {
+      toast.error('Failed to update category');
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, planned_amount, is_monthly }: { id: string; planned_amount: number; is_monthly: boolean }) => {
+      const response = await fetch('/api/categories/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, planned_amount, is_monthly }),
+      });
+      if (!response.ok) throw new Error('Failed to update category');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast.success('Budget updated successfully');
+      window.location.reload();
+    },
+    onError: () => {
+      toast.error('Failed to update budget');
+    },
+  });
+
+  // Edit handlers
+  const startEdit = (cat: Category) => {
+    setEditingId(cat.id);
+    setEditValue(String(cat.planned_amount || 0));
+    setEditIsMonthly(cat.is_monthly || false);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditValue('');
+    setEditIsMonthly(false);
+  };
+
+  const saveEdit = (categoryId: string) => {
+    const planned_amount = parseFloat(editValue);
+    if (isNaN(planned_amount) || planned_amount < 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    updateCategoryMutation.mutate({
+      id: categoryId,
+      planned_amount,
+      is_monthly: editIsMonthly,
+    });
+    setEditingId(null);
+  };
+
+  // Hidden categories (unbudgeted)
+  const hiddenCategories = unbudgetedCategories;
 
   // Calculate actual spending for the month of the selected date
   const calculateActualForMonth = (categoryId: string) => {
@@ -45,7 +110,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
 
     // Filter transactions that belong to the same month and year as currentDate (exclude planned transactions)
     const categoryTransactions = transactions.filter(t => {
-      if (t.category_id !== categoryId) return false;
+      if (t.categories.id !== categoryId) return false;
       if (t.is_planned) return false;
 
       const txDate = new Date(t.date);
@@ -66,7 +131,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
 
   // Calculate total actual spending across ALL transactions (for Total Remaining)
   const calculateTotalActual = (categoryId: string) => {
-    const categoryTransactions = transactions.filter(t => t.category_id === categoryId && !t.is_planned);
+    const categoryTransactions = transactions.filter(t => t.categories.id === categoryId && !t.is_planned);
 
     let actual = 0;
     categoryTransactions.forEach(t => {
@@ -81,148 +146,33 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
   };
 
   // Calculate remaining budget for the selected month
-  const calculateRemainingBudget = (cat: CategoryBreakdown) => {
-    const actualForMonth = calculateActualForMonth(cat.categoryId);
-    return cat.planned - actualForMonth;
+  const calculateRemainingBudget = (cat: Category) => {
+    const actualForMonth = calculateActualForMonth(cat.id);
+    return (cat.planned_amount || 0) - actualForMonth;
   };
 
-  const toggleBudgetedMutation = useMutation({
-    mutationFn: ({ categoryId, isBudgeted }: { categoryId: string; isBudgeted: boolean }) =>
-      updateCategory({ id: categoryId, is_budgeted: isBudgeted }),
-    onMutate: async ({ categoryId, isBudgeted }) => {
-      await queryClient.cancelQueries({ queryKey: ['categories'] });
-      await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
-      await queryClient.cancelQueries({ queryKey: ['unbudgetedCategoryBreakdown'] });
-
-      const previousCategories = queryClient.getQueriesData({ queryKey: ['categories'] });
-      const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
-      const previousUnbudgeted = queryClient.getQueriesData({ queryKey: ['unbudgetedCategoryBreakdown'] });
-
-      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: Category[] | undefined) => {
-        if (!old) return old;
-        return old.map((cat: Category) =>
-          cat.id === categoryId ? { ...cat, is_budgeted: isBudgeted } : cat
-        );
-      });
-
-      return { previousCategories, previousBreakdown, previousUnbudgeted };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categoryBreakdown'] });
-      queryClient.invalidateQueries({ queryKey: ['unbudgetedCategoryBreakdown'] });
-      queryClient.invalidateQueries({ queryKey: ['budgetSummary'] });
-      toast.success('Category visibility updated');
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousCategories) {
-        context.previousCategories.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      if (context?.previousBreakdown) {
-        context.previousBreakdown.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      if (context?.previousUnbudgeted) {
-        context.previousUnbudgeted.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      toast.error('Failed to update category visibility');
-      console.error('Error updating category:', error);
-    },
-  });
-
-  const updateCategoryMutation = useMutation({
-    mutationFn: ({ categoryId, plannedAmount, isMonthly }: { categoryId: string; plannedAmount: number; isMonthly: boolean }) =>
-      updateCategory({ id: categoryId, planned_amount: plannedAmount, is_monthly: isMonthly }),
-    onMutate: async ({ categoryId, plannedAmount, isMonthly }) => {
-      await queryClient.cancelQueries({ queryKey: ['categories'] });
-      await queryClient.cancelQueries({ queryKey: ['categoryBreakdown'] });
-      await queryClient.cancelQueries({ queryKey: ['budgetSummary'] });
-
-      const previousCategories = queryClient.getQueriesData({ queryKey: ['categories'] });
-      const previousBreakdown = queryClient.getQueriesData({ queryKey: ['categoryBreakdown'] });
-      const previousSummary = queryClient.getQueriesData({ queryKey: ['budgetSummary'] });
-
-      queryClient.setQueriesData({ queryKey: ['categories'] }, (old: Category[] | undefined) => {
-        if (!old) return old;
-        return old.map((cat: Category) =>
-          cat.id === categoryId ? { ...cat, planned_amount: plannedAmount, is_monthly: isMonthly } : cat
-        );
-      });
-
-      queryClient.setQueriesData({ queryKey: ['categoryBreakdown'] }, (old: CategoryBreakdown[] | undefined) => {
-        if (!old) return old;
-        return old.map((cat: CategoryBreakdown) =>
-          cat.categoryId === categoryId ? { ...cat, planned: plannedAmount, remaining: plannedAmount - cat.actual } : cat
-        );
-      });
-
-      return { previousCategories, previousBreakdown, previousSummary };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budgetSummary'] });
-      toast.success('Category budget updated');
-      setEditingId(null);
-    },
-    onError: (error, variables, context) => {
-      if (context?.previousCategories) {
-        context.previousCategories.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      if (context?.previousBreakdown) {
-        context.previousBreakdown.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      if (context?.previousSummary) {
-        context.previousSummary.forEach(([key, data]) => {
-          queryClient.setQueryData(key, data);
-        });
-      }
-      toast.error('Failed to update category budget');
-      console.error('Error updating category:', error);
-    },
-  });
-
-  const startEdit = (cat: CategoryBreakdown) => {
-    const category = categories.find(c => c.id === cat.categoryId);
-    setEditingId(cat.categoryId);
-    setEditValue(cat.planned.toString());
-    setEditIsMonthly(category?.is_monthly || false);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditValue('');
-    setEditIsMonthly(false);
-  };
-
-  const saveEdit = (categoryId: string) => {
-    const plannedAmount = parseFloat(editValue);
-    if (isNaN(plannedAmount) || plannedAmount < 0) {
-      toast.error('Please enter a valid amount');
-      return;
+  const calculateTotalBudget = (cat: Category) => {
+    let multiplier = parseFloat(timeFrameMonths);
+    if (multiplier < 1) {
+      multiplier = 1;
     }
-    updateCategoryMutation.mutate({ categoryId, plannedAmount, isMonthly: editIsMonthly });
-  };
-
-  const calculateTotalBudget = (cat: CategoryBreakdown) => {
-    const category = categories.find(c => c.id === cat.categoryId);
-    if (category?.is_monthly) {
-      return cat.planned * Math.floor(timeFrameMonths);
+    if (cat.is_monthly) {
+      return (cat.planned_amount || 0) * Math.floor(multiplier);
     }
-    return cat.planned;
+    return cat.planned_amount || 0;
   };
 
-  const calculateTotalRemaining = (cat: CategoryBreakdown) => {
+  const calculateTotalRemaining = (cat: Category) => {
     const totalBudget = calculateTotalBudget(cat);
-    const totalActual = calculateTotalActual(cat.categoryId);
+    const totalActual = calculateTotalActual(cat.id);
     return totalBudget - totalActual;
   };
+
+  // Calculate unbudgeted spending
+  const unbudgetedBreakdown = unbudgetedCategories.map(cat => ({
+    categoryId: cat.id,
+    actual: calculateTotalActual(cat.id),
+  }));
 
   return (
     <Card>
@@ -292,7 +242,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
         )}
 
         {/* Budgeted Categories Table */}
-        {breakdown.length === 0 ? (
+        {budgetedCategories.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No categories in budget.</p>
             <p className="text-sm mt-1">Click &quot;Add Category&quot; to get started.</p>
@@ -312,10 +262,10 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {breakdown
+              {budgetedCategories
                 .sort((a, b) => {
-                  const catA = categories.find(c => c.id === a.categoryId);
-                  const catB = categories.find(c => c.id === b.categoryId);
+                  const catA = categories.find(c => c.id === a.id);
+                  const catB = categories.find(c => c.id === b.id);
 
                   // Sort by monthly status first (monthly categories first)
                   if (catA?.is_monthly !== catB?.is_monthly) {
@@ -323,35 +273,33 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                   }
 
                   // Then by budget amount (descending)
-                  if (a.planned !== b.planned) {
-                    return b.planned - a.planned;
+                  if (a.planned_amount !== b.planned_amount) {
+                    return (b.planned_amount || 0) - (a.planned_amount || 0);
                   }
 
                   // Finally by category name (alphabetical)
-                  return a.categoryName.localeCompare(b.categoryName);
+                  return a.name.localeCompare(b.name);
                 })
                 .map((cat) => {
-                const category = categories.find(c => c.id === cat.categoryId);
+                const category = categories.find(c => c.id === cat.id);
                 const totalBudget = calculateTotalBudget(cat);
-                const actualForMonth = calculateActualForMonth(cat.categoryId);
-                const remainingBudget = calculateRemainingBudget(cat);
-                const totalRemaining = calculateTotalRemaining(cat);
+                const actualForMonth = calculateActualForMonth(cat.id);
 
                 return (
-                  <TableRow key={cat.categoryId}>
+                  <TableRow key={cat.id}>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {cat.categoryColor && (
+                        {cat.color && (
                           <div
                             className="hidden lg:block h-2 w-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: cat.categoryColor }}
+                            style={{ backgroundColor: cat.color }}
                           />
                         )}
-                        <span className="">{cat.categoryName}</span>
+                        <span className="">{cat.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {editingId === cat.categoryId ? (
+                      {editingId === cat.id ? (
                         <div className="flex flex-col space-y-2">
                           <div className="flex items-center space-x-1">
                             <Input
@@ -363,7 +311,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                               min="0"
                             />
                             <button
-                              onClick={() => saveEdit(cat.categoryId)}
+                              onClick={() => saveEdit(cat.id)}
                               className="text-green-600 hover:text-green-700 p-1"
                               disabled={updateCategoryMutation.isPending}
                             >
@@ -378,11 +326,11 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                           </div>
                           <div className="flex items-center space-x-2">
                             <Checkbox
-                              id={`is-monthly-${cat.categoryId}`}
+                              id={`is-monthly-${cat.id}`}
                               checked={editIsMonthly}
                               onCheckedChange={(checked: boolean) => setEditIsMonthly(checked)}
                             />
-                            <Label htmlFor={`is-monthly-${cat.categoryId}`} className="text-xs">
+                            <Label htmlFor={`is-monthly-${cat.id}`} className="text-xs">
                               Monthly
                             </Label>
                           </div>
@@ -390,7 +338,7 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                       ) : (
                         <div className="flex justify-start items-center">
                           <div className="flex items-center md:min-w-28">
-                            <span className="">{formatCurrency(cat.planned)}</span>
+                            <span className="">{formatCurrency(cat.planned_amount || 0)}</span>
                             {category?.is_monthly && (
                               <span className="text-xs text-muted-foreground ml-1">/mo</span>
                             )}
@@ -417,11 +365,11 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                     <TableCell>
                       {category?.is_monthly ? (
                         <span className={``}>
-                          {formatCurrency(totalRemaining)}
+                          {formatCurrency(calculateTotalRemaining(cat))}
                         </span>
                       ) : (
                         <span className={``}>
-                          {formatCurrency(remainingBudget)}
+                          {formatCurrency(calculateRemainingBudget(cat))}
                         </span>
                       )}
                     </TableCell>
@@ -430,10 +378,10 @@ export function CategoryBreakdownCard({ breakdown, unbudgetedBreakdown, categori
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          const category = categories.find(c => c.id === cat.categoryId);
+                          const category = categories.find(c => c.id === cat.id);
                           if (category) {
                             toggleBudgetedMutation.mutate({
-                              categoryId: cat.categoryId,
+                              categoryId: cat.id,
                               isBudgeted: false
                             });
                           }

@@ -4,40 +4,33 @@ import { prisma } from '@/lib/prismaClient';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, filterStartDate, filterEndDate, type, categoryId } = await request.json();
+    const { userId, filterStartDate, filterEndDate, type, categoryId, isBudgetPage = false } = await request.json();
 
+    // return NextResponse.json({ userId, filterStartDate, filterEndDate, type, categoryId }, { status: 200 });
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const transactions = await prisma.transactions.findMany({
-      where:{
-        user_id: userId,
-        AND: [
-          {
-            date: {
-              gte: new Date(filterStartDate),
-              lte: new Date(filterEndDate + 'T23:59:59.999Z'),
-            },
-          },
-          {
-            type: type,
-          },
-          {
-            category_id: categoryId,
-          },
-        ],
-        OR: [
-          {
-            is_planned: true,
-            is_completed: true,
-          },
-          {
-            is_planned: false,
-            is_completed: false,
-          }
-        ]
+    const whereClause: any = {
+      user_id: userId,
+      date: {
+        gte: new Date(filterStartDate),
+        lte: new Date(filterEndDate + 'T23:59:59.999Z'),
       },
+    };
+
+    if (type) whereClause.type = type;
+    if (categoryId) whereClause.category_id = categoryId;
+
+    if (!isBudgetPage) {
+      whereClause.OR = [
+        { is_planned: true, is_completed: true },
+        { is_planned: false, is_completed: false },
+      ];
+    }
+
+    const transactions = await prisma.transactions.findMany({
+      where: whereClause,
       include:{
         categories:{
           select:{

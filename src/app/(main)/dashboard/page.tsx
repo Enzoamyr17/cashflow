@@ -100,6 +100,7 @@ export default function DashboardPage() {
   }
 
   const handleAddTransaction = async (newTransaction: {
+    user_id: string;
     date: string;
     type: TransactionType;
     category_id: string;

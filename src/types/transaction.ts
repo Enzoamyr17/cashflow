@@ -18,6 +18,7 @@ export interface Transaction {
   date: string;
   created_at: string;
   is_completed: boolean;
+  is_planned: boolean;
 }
 
 export interface CreateTransactionInput {

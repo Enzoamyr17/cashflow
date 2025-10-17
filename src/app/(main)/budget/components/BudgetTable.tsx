@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TransactionWithCategory, Category, PaymentMethod, TransactionType } from '@/types';
+import { Transaction } from '@/types/transaction';
+import { Category } from '@/types/category';
+import { PaymentMethod, TransactionType } from '@/types/transaction';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateTransaction, useMarkTransactionCompleted, useDeleteTransaction } from '@/hooks/useTransactions';
 import { formatCurrency, formatDate, getTodayString } from '@/lib/formatters';
 import { Trash2, Plus, Check } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -17,22 +18,35 @@ import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
 interface BudgetTableProps {
-  transactions: TransactionWithCategory[];
+  transactions: Transaction[];
   categories: Category[];
   userId: string;
+  onAddTransaction: (newTransaction: {
+    user_id: string;
+    date: string;
+    type: TransactionType;
+    category_id: string;
+    amount: string;
+    method: PaymentMethod;
+    notes: string;
+    is_planned?: boolean;
+  }) => Promise<void>;
+  onDeleteTransaction: (deleteId: string) => Promise<void>;
+  onCompleteTransaction: (transactionId: string) => Promise<void>;
 }
 
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other_Bank', 'Others'];
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
 
-export function BudgetTable({ transactions, categories, userId }: BudgetTableProps) {
+export function BudgetTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction, onCompleteTransaction }: BudgetTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   const [newTransaction, setNewTransaction] = useState({
+    user_id: userId,
     date: getTodayString(),
     type: 'expense' as TransactionType,
     category_id: '',
@@ -40,6 +54,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
     method: 'Cash' as PaymentMethod,
     notes: '',
     is_planned: true,
+    is_completed: false,
   });
 
   useEffect(() => {
@@ -54,10 +69,6 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
   // Filter to only show budgeted categories in the dropdown
   const budgetedCategories = categories.filter(cat => cat.is_budgeted !== false);
 
-  const createMutation = useCreateTransaction(userId);
-  const completeMutation = useMarkTransactionCompleted();
-  const deleteMutation = useDeleteTransaction();
-
   const handleAddClick = () => {
     if (isMobile) {
       setShowCreateModal(true);
@@ -66,7 +77,7 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
     }
   };
 
-  const handleTransactionClick = (transaction: TransactionWithCategory) => {
+  const handleTransactionClick = (transaction: Transaction) => {
     if (isMobile) {
       setSelectedTransaction(transaction);
       setShowViewModal(true);
@@ -84,19 +95,14 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
       return;
     }
 
-    await createMutation.mutateAsync({
-      date: newTransaction.date,
-      type: newTransaction.type,
-      category_id: newTransaction.category_id,
-      amount: parseFloat(newTransaction.amount),
-      method: newTransaction.method,
-      notes: newTransaction.notes || null,
+    await onAddTransaction({
+      ...newTransaction,
       is_planned: newTransaction.is_planned,
-      is_completed: !newTransaction.is_planned,
     });
 
     // Reset form
     setNewTransaction({
+      user_id: userId,
       date: getTodayString(),
       type: 'expense',
       category_id: '',
@@ -104,11 +110,13 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
       method: 'Cash',
       notes: '',
       is_planned: true,
+      is_completed: false,
     });
     setShowAddRow(false);
   };
 
   const handleModalSave = async (transaction: {
+    user_id: string;
     date: string;
     type: TransactionType;
     category_id: string;
@@ -127,25 +135,17 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
       return;
     }
 
-    await createMutation.mutateAsync({
-      date: transaction.date,
-      type: transaction.type,
-      category_id: transaction.category_id,
-      amount: parseFloat(transaction.amount),
-      method: transaction.method,
-      notes: transaction.notes || null,
-      is_planned: transaction.is_planned ?? true,
-      is_completed: !(transaction.is_planned ?? true),
-    });
+    onAddTransaction(transaction);
+    setShowCreateModal(false);
   };
 
   const handleComplete = async (id: string) => {
-    await completeMutation.mutateAsync(id);
+    onCompleteTransaction(id);
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
+      onDeleteTransaction(deleteId);
       setDeleteId(null);
     }
   };
@@ -296,9 +296,9 @@ export function BudgetTable({ transactions, categories, userId }: BudgetTablePro
                     {transaction.type}
                   </span>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{transaction.category_name || 'Uncategorized'}</TableCell>
+                <TableCell className="hidden md:table-cell">{transaction.categories.name || 'Uncategorized'}</TableCell>
                 <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
-                  <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.category_color || 'transparent' }}></div>
+                  <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.categories.color || 'transparent' }}></div>
                   {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount))}
                 </TableCell>
                 <TableCell>{transaction.method}</TableCell>

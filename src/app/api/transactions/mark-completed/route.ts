@@ -1,5 +1,5 @@
+import { prisma } from '@/lib/prismaClient';
 import { NextRequest, NextResponse } from 'next/server';
-import { markTransactionCompleted } from '@/server/transactions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Transaction ID is required' }, { status: 400 });
     }
 
-    const transaction = await markTransactionCompleted(transactionId);
+    const transaction = await prisma.transactions.update({
+      where: { id: transactionId },
+      data: { is_completed: true },
+    });
 
     return NextResponse.json({ transaction });
   } catch (error) {

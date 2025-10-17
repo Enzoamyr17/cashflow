@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
             name: true,
             color: true,
             is_budgeted: true,
+            planned_amount: true,
+            is_monthly: true,
           }
         });
 

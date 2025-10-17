@@ -22,6 +22,7 @@ interface CreateModalProps {
   categories: Category[];
   userId: string;
   onSave: (transaction: {
+    user_id: string;
     date: string;
     type: TransactionType;
     category_id: string;
@@ -35,7 +36,7 @@ interface CreateModalProps {
   filterBudgetedCategories?: boolean;
 }
 
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other_Bank', 'Others'];
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
 
 export function CreateModal({
   open,
@@ -48,6 +49,7 @@ export function CreateModal({
   filterBudgetedCategories = false,
 }: CreateModalProps) {
   const [formData, setFormData] = useState({
+    user_id: userId,
     date: getTodayString(),
     type: defaultType,
     category_id: '',
@@ -65,6 +67,7 @@ export function CreateModal({
     onSave(formData);
     // Reset form
     setFormData({
+      user_id: userId,
       date: getTodayString(),
       type: defaultType,
       category_id: '',

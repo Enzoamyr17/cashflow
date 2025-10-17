@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteTransaction } from '@/server/transactions';
-
+import { prisma } from '@/lib/prismaClient';
 export async function POST(request: NextRequest) {
   try {
     const { transactionId } = await request.json();
@@ -9,9 +8,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Transaction ID is required' }, { status: 400 });
     }
 
-    await deleteTransaction(transactionId);
+    const transaction = await prisma.transactions.delete({
+      where: {
+        id: transactionId,
+      },
+    });
 
-    return NextResponse.json({ success: true });
+    console.log('Transaction deleted:', transaction);
+    return NextResponse.json({ transaction });
   } catch (error) {
     console.error('Error deleting transaction:', error);
     return NextResponse.json(

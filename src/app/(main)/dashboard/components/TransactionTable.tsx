@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TransactionWithCategory, Category, PaymentMethod, TransactionType } from '@/types';
+import { Transaction, Category, PaymentMethod, TransactionType } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateTransaction, useDeleteTransaction } from '@/hooks/useTransactions';
 import { formatCurrency, formatDate, getTodayString } from '@/lib/formatters';
 import { Trash2, Plus } from 'lucide-react';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -17,22 +16,27 @@ import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
 interface TransactionTableProps {
-  transactions: TransactionWithCategory[];
+  transactions: Transaction[];
   categories: Category[];
   userId: string;
+  onAddTransaction: (newTransaction: any) => void;
+  onDeleteTransaction: (deleteId: string) => void;
 }
 
-const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Other_Bank', 'Others'];
 
-export function TransactionTable({ transactions, categories, userId }: TransactionTableProps) {
-  const [showAddRow, setShowAddRow] = useState(false);
+
+const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
+
+export function TransactionTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction }: TransactionTableProps) {
+  const [showAddRow, setShowAddRow] = useState(false);  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   const [newTransaction, setNewTransaction] = useState({
+    user_id: userId,
     date: getTodayString(),
     type: 'expense' as TransactionType,
     category_id: '',
@@ -40,6 +44,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     method: 'Cash' as PaymentMethod,
     notes: '',
   });
+
 
   useEffect(() => {
     const checkMobile = () => {
@@ -50,9 +55,6 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const createMutation = useCreateTransaction(userId);
-  const deleteMutation = useDeleteTransaction();
-
   const handleAddClick = () => {
     if (isMobile) {
       setShowCreateModal(true);
@@ -61,7 +63,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
     }
   };
 
-  const handleTransactionClick = (transaction: TransactionWithCategory) => {
+  const handleTransactionClick = (transaction: Transaction) => {
     if (isMobile) {
       setSelectedTransaction(transaction);
       setShowViewModal(true);
@@ -69,38 +71,28 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
   };
 
   const handleAddTransaction = async () => {
-    if (!newTransaction.amount) {
-      toast.error('Please enter an amount');
-      return;
-    }
-
-    if (!newTransaction.category_id) {
-      toast.error('Please select a category');
-      return;
-    }
-
-    await createMutation.mutateAsync({
-      date: newTransaction.date,
-      type: newTransaction.type,
-      category_id: newTransaction.category_id,
-      amount: parseFloat(newTransaction.amount),
-      method: newTransaction.method,
-      notes: newTransaction.notes || null,
-    });
-
-    // Reset form
+    onAddTransaction(newTransaction);
     setNewTransaction({
+      user_id: userId,
       date: getTodayString(),
-      type: 'expense',
+      type: 'expense' as TransactionType,
       category_id: '',
       amount: '',
-      method: 'Cash',
+      method: 'Cash' as PaymentMethod,
       notes: '',
     });
     setShowAddRow(false);
   };
 
+  const handleDeleteTransaction = async () => {
+    if (deleteId) {
+      onDeleteTransaction(deleteId);
+      setDeleteId(null);
+    }
+  };
+
   const handleModalSave = async (transaction: {
+    user_id: string;
     date: string;
     type: TransactionType;
     category_id: string;
@@ -118,21 +110,9 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
       return;
     }
 
-    await createMutation.mutateAsync({
-      date: transaction.date,
-      type: transaction.type,
-      category_id: transaction.category_id,
-      amount: parseFloat(transaction.amount),
-      method: transaction.method,
-      notes: transaction.notes || null,
-    });
-  };
-
-  const handleDelete = async () => {
-    if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
-      setDeleteId(null);
-    }
+    onAddTransaction(transaction);
+    setShowCreateModal(false);
+    
   };
 
   return (
@@ -267,7 +247,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
               </TableCell>
 
               <TableCell>
-                {transaction.category_name || 'Uncategorized'}
+                {transaction.categories.name || 'Uncategorized'}
               </TableCell>
 
               <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
@@ -321,7 +301,7 @@ export function TransactionTable({ transactions, categories, userId }: Transacti
         onOpenChange={(open) => !open && setDeleteId(null)}
         title="Delete Transaction"
         description="Are you sure you want to delete this transaction? This action cannot be undone."
-        onConfirm={handleDelete}
+        onConfirm={handleDeleteTransaction}
         confirmText="Delete"
         variant="destructive"
       />

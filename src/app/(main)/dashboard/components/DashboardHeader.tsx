@@ -1,24 +1,31 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TransactionWithCategory } from '@/types';
-import { calculateBalance, calculateTotalIncome, calculateTotalExpenses } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/formatters';
 import { TrendingUp, TrendingDown, Wallet, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCategories } from '@/hooks/useCategories';
+import { Transaction } from '@/types/transaction';
 
 interface DashboardHeaderProps {
-  transactions: TransactionWithCategory[];
+  transactions: Transaction[];
 }
 
 export function DashboardHeader({ transactions }: DashboardHeaderProps) {
   const { user } = useAuth();
-  const { data: categories } = useCategories(user?.id);
-  const transactionBalance = calculateBalance(transactions, categories || []);
-  const totalIncome = calculateTotalIncome(transactions);
-  const totalExpenses = calculateTotalExpenses(transactions, categories || []);
-  const currentBalance = (user?.starting_balance || 0) + transactionBalance;
+
+  const totalIncome = (transactions?.filter(t => t.type === 'income') || []).reduce((acc, transaction) => {
+    return acc + Number(transaction.amount);
+  }, 0);
+  
+  const totalExpenses = (transactions?.filter(t => t.type === 'expense') || []).reduce((acc, transaction) => {
+    return acc + Number(transaction.amount);
+  }, 0);
+
+  const totalUnbudgetedExpenses = (transactions?.filter(t => t.type === 'expense' && t.categories.is_budgeted === false) || []).reduce((acc, transaction) => {
+    return acc + Number(transaction.amount);
+  }, 0);
+
+  const currentBalance = Number(user?.starting_balance) + totalIncome - totalExpenses;
 
   const change = totalIncome - totalExpenses;
 
@@ -63,8 +70,8 @@ export function DashboardHeader({ transactions }: DashboardHeaderProps) {
           <div className="text-2xl font-semibold text-red-700">
             {formatCurrency(totalExpenses)}
           </div>
-          <p className="text-xs text-muted-foreground mt-1 hidden md:block">
-            {transactions.filter(t => t.type === 'expense').length} transactions
+          <p className="text-xs text-muted-foreground mt-1">
+            Unbudgeted: {formatCurrency(totalUnbudgetedExpenses)}
           </p>
         </CardContent>
       </Card>

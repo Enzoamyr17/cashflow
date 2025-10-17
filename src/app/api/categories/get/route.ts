@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCategories } from '@/server/categories';
+import { prisma } from '@/lib/prismaClient';
+
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,14 +10,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const categories = await getCategories(userId);
+    const categories = await prisma.categories.findMany({
+      where:{
+        user_id: userId,
+      },
+      select:{
+            id: true,
+            name: true,
+            color: true,
+            is_budgeted: true,
+          }
+        });
 
-    return NextResponse.json({ categories });
+    if (categories.length === 0) {
+      return NextResponse.json({ error: 'No categories found for user:' + userId }, { status: 404 });
+    }
+
+    return NextResponse.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch categories' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
 }

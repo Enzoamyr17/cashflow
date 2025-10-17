@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useCreateCategory } from '@/hooks/useCategories';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -24,7 +23,7 @@ const PRESET_COLORS = [
   '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
 ];
 
-export function CategorySelect({
+export function   CategorySelect({
   categories,
   value,
   onValueChange,
@@ -35,7 +34,6 @@ export function CategorySelect({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0]);
-  const createMutation = useCreateCategory(userId);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -44,21 +42,10 @@ export function CategorySelect({
     }
 
     try {
-      const newCategory = await createMutation.mutateAsync({
-        name: newCategoryName.trim(),
-        color: newCategoryColor,
-        is_budgeted: true, // Default new categories to budgeted
-      });
-
-      // Close dialog and reset
-      setShowAddDialog(false);
-      setNewCategoryName('');
-      setNewCategoryColor(PRESET_COLORS[0]);
-
-      // Select the newly created category
-      onValueChange(newCategory.id);
-    } catch {
-      // Error toast already shown by hook
+      console.log("newCategoryName", newCategoryName);
+      console.log("newCategoryColor", newCategoryColor);
+    } catch (error) {
+      console.error("Error creating category:", error);
     }
   };
 
@@ -149,8 +136,8 @@ export function CategorySelect({
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreateCategory} disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create Category'}
+            <Button onClick={handleCreateCategory}>
+              Create Category
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,24 +1,23 @@
 export type TransactionType = 'income' | 'expense';
 
-export type PaymentMethod = 'Cash' | 'Gcash' | 'Seabank' | 'UBP' | 'Other_Bank' | 'Others';
+export type PaymentMethod = 'Cash' | 'Gcash' | 'Seabank' | 'UBP' | 'Others';
 
 export interface Transaction {
   id: string;
   user_id: string;
-  category_id: string | null;
-  type: TransactionType;
+  categories:{
+    id: string;
+    name: string;
+    color: string;
+    is_budgeted: boolean;
+  }
+  type: "income" | "expense";
   amount: number;
   method: PaymentMethod;
-  notes: string | null;
-  date: string; // ISO date string
-  is_planned: boolean;
-  is_completed: boolean;
+  notes: string;
+  date: string;
   created_at: string;
-}
-
-export interface TransactionWithCategory extends Transaction {
-  category_name: string | null;
-  category_color: string | null;
+  is_completed: boolean;
 }
 
 export interface CreateTransactionInput {

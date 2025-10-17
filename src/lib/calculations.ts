@@ -1,4 +1,4 @@
-import { Transaction, CategoryBreakdown } from '@/types';
+import { Transaction, CategoryBreakdown, Category } from '@/types';
 
 /**
  * Calculate total income from transactions
@@ -12,18 +12,18 @@ export function calculateTotalIncome(transactions: Transaction[]): number {
 /**
  * Calculate total expenses from transactions
  */
-export function calculateTotalExpenses(transactions: Transaction[]): number {
+export function calculateTotalExpenses(transactions: Transaction[], categories: Category[]): number {
   return transactions
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && categories.find((c) => c.id === t.category_id)?.is_budgeted === true)
     .reduce((sum, t) => sum + Number(t.amount), 0);
 }
 
 /**
  * Calculate balance (income - expenses)
  */
-export function calculateBalance(transactions: Transaction[]): number {
+export function calculateBalance(transactions: Transaction[], categories: Category[]): number {
   const income = calculateTotalIncome(transactions);
-  const expenses = calculateTotalExpenses(transactions);
+  const expenses = calculateTotalExpenses(transactions, categories);
   return income - expenses;
 }
 
@@ -39,9 +39,9 @@ export function calculateProjectedExpenses(transactions: Transaction[]): number 
 /**
  * Calculate actual expenses (non-planned or completed expenses)
  */
-export function calculateActualExpenses(transactions: Transaction[]): number {
+export function calculateActualExpenses(transactions: Transaction[], categories: Category[]): number {
   return transactions
-    .filter((t) => t.type === 'expense' && (!t.is_planned || t.is_completed))
+    .filter((t) => t.type === 'expense' && (!t.is_planned || t.is_completed) && categories.find((c) => c.id === t.category_id)?.is_budgeted === true)
     .reduce((sum, t) => sum + Number(t.amount), 0);
 }
 

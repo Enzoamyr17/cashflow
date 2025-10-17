@@ -31,10 +31,12 @@ export async function getDashboardStats(
     isPlanned: false,
   });
 
+  const allCategories = await getCategories(userId);
+
   return {
     totalIncome: calculateTotalIncome(transactions),
-    totalExpenses: calculateTotalExpenses(transactions),
-    balance: calculateBalance(transactions),
+    totalExpenses: calculateTotalExpenses(transactions, allCategories),
+    balance: calculateBalance(transactions, allCategories),
     transactionCount: transactions.length,
   };
 }
@@ -54,10 +56,12 @@ export async function getBudgetSummary(
     endDate: startDate,
   });
 
+  const allCategories = await getCategories(userId);
+
   // Filter to only completed transactions before start date
   const completedBeforeStart = transactionsBeforeStart.filter(t => !t.is_planned || t.is_completed);
   const incomeBeforeStart = calculateTotalIncome(completedBeforeStart);
-  const expensesBeforeStart = calculateTotalExpenses(completedBeforeStart);
+  const expensesBeforeStart = calculateTotalExpenses(completedBeforeStart, allCategories);
 
   // Adjust starting balance with transactions before budget start date
   const adjustedStartingBalance = userStartingBalance + incomeBeforeStart - expensesBeforeStart;
@@ -68,18 +72,17 @@ export async function getBudgetSummary(
     endDate,
   });
 
-  const allCategories = await getCategories(userId);
 
   // Include all transactions with categories (both budgeted and unbudgeted)
   // Only exclude uncategorized transactions (those without category_id)
   const categorizedTransactions = allTransactions.filter(t => t.category_id);
 
   const totalIncome = calculateTotalIncome(categorizedTransactions);
-  const totalExpenses = calculateTotalExpenses(categorizedTransactions);
+  const totalExpenses = calculateTotalExpenses(categorizedTransactions, allCategories);
   const projectedIncome = calculateProjectedIncome(categorizedTransactions);
   const actualIncome = calculateActualIncome(categorizedTransactions);
   const projectedExpenses = calculateProjectedExpenses(categorizedTransactions);
-  const actualExpenses = calculateActualExpenses(categorizedTransactions);
+  const actualExpenses = calculateActualExpenses(categorizedTransactions, allCategories);
 
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -151,7 +154,7 @@ export async function getUnbudgetedCategoryBreakdown(
 
   // Filter transactions to only those from unbudgeted categories
   const unbudgetedTransactions = allTransactions.filter(
-    t => t.category_id && unbudgetedCategoryIds.has(t.category_id)
+    t => t.category_id && unbudgetedCategoryIds.has(t.category_id) && t.is_completed
   );
 
   return calculateCategoryBreakdown(unbudgetedTransactions, unbudgetedCategories);

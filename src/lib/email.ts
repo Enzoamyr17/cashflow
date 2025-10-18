@@ -107,7 +107,7 @@ export async function sendVerificationEmail(
         <body>
           <div class="container">
             <div class="header">
-              <img src="https://flow.gregorio-dev.cloud/assets/flow/Flow_Black.png" alt="Flow by Saint" width="300" height="100">
+              <img src="https://flow.gregorio-dev.cloud/assets/flow/black.png" alt="Flow by Saint" width="300" height="100">
             </div>
 
             <p>Hello${userName ? ` ${userName}` : ''},</p>

@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-const NEW_DOMAIN = "budget.gregorio-dev.cloud"
+const NEW_DOMAIN = "flow.gregorio-dev.cloud"
 const SESSION_KEY = "domain-warning-shown"
 
 export function DomainWarningDialog() {

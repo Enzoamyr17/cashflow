@@ -15,19 +15,30 @@ import { CreateModal } from '@/components/common/CreateModal';
 import { TransactionModal } from '@/components/common/TransactionModal';
 import { toast } from 'sonner';
 
+export interface NewTransactionForm {
+  user_id: string;
+  date: string;
+  type: TransactionType;
+  category_id: string;
+  amount: string;
+  method: PaymentMethod;
+  notes: string;
+}
+
 interface TransactionTableProps {
   transactions: Transaction[];
   categories: Category[];
   userId: string;
-  onAddTransaction: (newTransaction: any) => void;
+  onAddTransaction: (newTransaction: NewTransactionForm) => void;
   onDeleteTransaction: (deleteId: string) => void;
+  onCategoryCreated?: (category: Category) => void;
 }
 
 
 
 const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
 
-export function TransactionTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction }: TransactionTableProps) {
+export function TransactionTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction, onCategoryCreated }: TransactionTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -170,6 +181,7 @@ export function TransactionTable({ transactions, categories, userId, onAddTransa
                   userId={userId}
                   placeholder="Select..."
                   className="h-8"
+                  onCategoryCreated={onCategoryCreated}
                 />
               </TableCell>
               <TableCell>
@@ -247,7 +259,7 @@ export function TransactionTable({ transactions, categories, userId, onAddTransa
               </TableCell>
 
               <TableCell>
-                {transaction.categories.name || 'Uncategorized'}
+                {transaction.categories?.name || 'Uncategorized'}
               </TableCell>
 
               <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
@@ -282,6 +294,7 @@ export function TransactionTable({ transactions, categories, userId, onAddTransa
         categories={categories}
         userId={userId}
         onSave={handleModalSave}
+        onCategoryCreated={onCategoryCreated}
       />
 
       {selectedTransaction && (

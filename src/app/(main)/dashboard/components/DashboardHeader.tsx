@@ -21,7 +21,7 @@ export function DashboardHeader({ transactions }: DashboardHeaderProps) {
     return acc + Number(transaction.amount);
   }, 0);
 
-  const totalUnbudgetedExpenses = (transactions?.filter(t => t.type === 'expense' && t.categories.is_budgeted === false) || []).reduce((acc, transaction) => {
+  const totalUnbudgetedExpenses = (transactions?.filter(t => t.type === 'expense' && t.categories?.is_budgeted === false) || []).reduce((acc, transaction) => {
     return acc + Number(transaction.amount);
   }, 0);
 

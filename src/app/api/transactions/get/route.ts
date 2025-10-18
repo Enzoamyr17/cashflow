@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       user_id: userId,
       date: {
         gte: new Date(filterStartDate),

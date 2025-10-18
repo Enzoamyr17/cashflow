@@ -25,12 +25,12 @@ export async function POST(request: NextRequest) {
         });
 
     if (categories.length === 0) {
-      return NextResponse.json({ error: 'No categories found for user:' + userId }, { status: 404 });
+      return NextResponse.json([], { status: 200 });
     }
 
     return NextResponse.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to fetch categories' }, { status: 500 });
   }
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useCategories, useCreateCategory, useDeleteCategory } from '@/hooks/useCategories';
+import { Category } from '@/types/category';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,15 +26,38 @@ const PRESET_COLORS = [
 
 export default function CategoriesPage() {
   const { user } = useAuth();
-  const { data: categories, isLoading } = useCategories(user?.id);
-  const createMutation = useCreateCategory(user?.id || '');
-  const deleteMutation = useDeleteCategory();
-
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newCategory, setNewCategory] = useState({
     name: '',
     color: PRESET_COLORS[0],
   });
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories/get', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+
+      const data = await response.json();
+      setCategories(data);
+      console.log("Categories fetched:", data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchCategories();
+    }
+  }, [user]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,24 +68,49 @@ export default function CategoriesPage() {
     }
 
     try {
-      await createMutation.mutateAsync({
-        name: newCategory.name.trim(),
-        color: newCategory.color,
+      const response = await fetch('/api/categories/create', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user?.id,
+          input: {
+            name: newCategory.name.trim(),
+            color: newCategory.color,
+          },
+        }),
       });
 
-      // Reset form
-      setNewCategory({
-        name: '',
-        color: PRESET_COLORS[0],
-      });
-    } catch {
-      // Error toast already shown by hook
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Category added successfully');
+        setCategories([...categories, data.category]);
+
+        // Reset form
+        setNewCategory({
+          name: '',
+          color: PRESET_COLORS[0],
+        });
+      }
+    } catch (error) {
+      toast.error('Error adding category');
     }
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
+      try {
+        const response = await fetch('/api/categories/delete', {
+          method: 'POST',
+          body: JSON.stringify({ categoryId: deleteId }),
+        });
+
+        if (response.ok) {
+          toast.success('Category deleted successfully');
+          setCategories(categories.filter(category => category.id !== deleteId));
+        }
+      } catch (error) {
+        toast.error('Error deleting category');
+      }
       setDeleteId(null);
     }
   };
@@ -117,9 +165,9 @@ export default function CategoriesPage() {
                 </div>
               </div>
             </div>
-            <Button type="submit" disabled={createMutation.isPending}>
+            <Button type="submit">
               <Plus className="h-4 w-4 mr-2" />
-              {createMutation.isPending ? 'Adding...' : 'Add Category'}
+              Add Category
             </Button>
           </form>
         </CardContent>

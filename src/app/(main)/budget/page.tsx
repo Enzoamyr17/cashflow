@@ -104,7 +104,7 @@ export default function BudgetPage() {
       toast.success('Transaction added successfully');
 
       if(response.ok){
-        let newItem = {
+        const newItem = {
           ...data.transaction,
           categories: categories.find(cat => cat.id === data.transaction.category_id) as {
             id: string;
@@ -154,6 +154,10 @@ export default function BudgetPage() {
     } catch (error) {
       toast.error('Error completing transaction');
     }
+  };
+
+  const handleCategoryCreated = (newCategory: Category) => {
+    setCategories(prevCategories => [...prevCategories, newCategory]);
   };
 
   if (isLoading) {
@@ -229,6 +233,7 @@ export default function BudgetPage() {
         onAddTransaction={handleAddTransaction}
         onDeleteTransaction={handleDeleteTransaction}
         onCompleteTransaction={handleCompleteTransaction}
+        onCategoryCreated={handleCategoryCreated}
       />
     </div>
   );

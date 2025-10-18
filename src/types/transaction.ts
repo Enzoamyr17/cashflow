@@ -35,3 +35,5 @@ export interface CreateTransactionInput {
 export interface UpdateTransactionInput extends Partial<CreateTransactionInput> {
   id: string;
 }
+
+export type TransactionWithCategory = Transaction;

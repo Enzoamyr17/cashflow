@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createCategory } from '@/server/categories';
-import { CreateCategoryInput } from '@/types';
+import { prisma } from '@/lib/prismaClient';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +9,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const category = await createCategory(userId, input as CreateCategoryInput);
+    if (!input?.name) {
+      return NextResponse.json({ error: 'Category name is required' }, { status: 400 });
+    }
+
+    const category = await prisma.categories.create({
+      data: {
+        user_id: userId,
+        name: input.name,
+        color: input.color || '#6B7280',
+        is_budgeted: input.is_budgeted || false,
+        planned_amount: input.planned_amount || null,
+        is_monthly: input.is_monthly || false,
+      },
+    });
 
     return NextResponse.json({ category });
   } catch (error) {

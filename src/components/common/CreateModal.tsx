@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Category, PaymentMethod, TransactionType } from '@/types';
 import {
   Dialog,
@@ -34,6 +34,7 @@ interface CreateModalProps {
   showPlannedToggle?: boolean;
   defaultType?: TransactionType;
   filterBudgetedCategories?: boolean;
+  onCategoryCreated?: (category: Category) => void;
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
@@ -47,6 +48,7 @@ export function CreateModal({
   showPlannedToggle = false,
   defaultType = 'expense',
   filterBudgetedCategories = false,
+  onCategoryCreated,
 }: CreateModalProps) {
   const [formData, setFormData] = useState({
     user_id: userId,
@@ -59,9 +61,23 @@ export function CreateModal({
     is_planned: true,
   });
 
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
+
+  // Update local categories when prop changes
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  const handleCategoryCreated = (newCategory: Category) => {
+    setLocalCategories(prevCategories => [...prevCategories, newCategory]);
+    if (onCategoryCreated) {
+      onCategoryCreated(newCategory);
+    }
+  };
+
   const filteredCategories = filterBudgetedCategories
-    ? categories.filter(cat => cat.is_budgeted !== false)
-    : categories;
+    ? localCategories.filter(cat => cat.is_budgeted !== false)
+    : localCategories;
 
   const handleSave = () => {
     onSave(formData);
@@ -123,6 +139,7 @@ export function CreateModal({
               onValueChange={(value) => setFormData({ ...formData, category_id: value })}
               userId={userId}
               placeholder="Select category..."
+              onCategoryCreated={handleCategoryCreated}
             />
           </div>
 

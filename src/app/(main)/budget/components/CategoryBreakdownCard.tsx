@@ -110,7 +110,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
 
     // Filter transactions that belong to the same month and year as currentDate (exclude planned transactions)
     const categoryTransactions = transactions.filter(t => {
-      if (t.categories.id !== categoryId) return false;
+      if (t.categories?.id !== categoryId) return false;
       if (t.is_planned) return false;
 
       const txDate = new Date(t.date);
@@ -131,7 +131,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
 
   // Calculate total actual spending across ALL transactions (for Total Remaining)
   const calculateTotalActual = (categoryId: string) => {
-    const categoryTransactions = transactions.filter(t => t.categories.id === categoryId && !t.is_planned);
+    const categoryTransactions = transactions.filter(t => t.categories?.id === categoryId && !t.is_planned);
 
     let actual = 0;
     categoryTransactions.forEach(t => {

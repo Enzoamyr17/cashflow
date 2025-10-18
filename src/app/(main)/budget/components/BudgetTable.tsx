@@ -33,11 +33,12 @@ interface BudgetTableProps {
   }) => Promise<void>;
   onDeleteTransaction: (deleteId: string) => Promise<void>;
   onCompleteTransaction: (transactionId: string) => Promise<void>;
+  onCategoryCreated?: (category: Category) => void;
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Gcash', 'Seabank', 'UBP', 'Others'];
 
-export function BudgetTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction, onCompleteTransaction }: BudgetTableProps) {
+export function BudgetTable({ transactions, categories, userId, onAddTransaction, onDeleteTransaction, onCompleteTransaction, onCategoryCreated }: BudgetTableProps) {
   const [showAddRow, setShowAddRow] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -206,6 +207,7 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
                   userId={userId}
                   placeholder="Select..."
                   className="h-8"
+                  onCategoryCreated={onCategoryCreated}
                 />
               </TableCell>
               <TableCell>
@@ -296,9 +298,9 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
                     {transaction.type}
                   </span>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{transaction.categories.name || 'Uncategorized'}</TableCell>
+                <TableCell className="hidden md:table-cell">{transaction.categories?.name || 'Uncategorized'}</TableCell>
                 <TableCell className={`font-semibold ${transaction.type === 'income' ? 'text-green-600' : 'text-orange-600'}`}>
-                  <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.categories.color || 'transparent' }}></div>
+                  <div className="size-2 inline-block mr-1 rounded-full md:hidden" style={{ backgroundColor: transaction.categories?.color || 'transparent' }}></div>
                   {transaction.type === 'income' ? '+' : ''}{formatCurrency(Number(transaction.amount))}
                 </TableCell>
                 <TableCell>{transaction.method}</TableCell>
@@ -347,6 +349,7 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
         onSave={handleModalSave}
         showPlannedToggle={true}
         filterBudgetedCategories={false}
+        onCategoryCreated={onCategoryCreated}
       />
 
       {selectedTransaction && (

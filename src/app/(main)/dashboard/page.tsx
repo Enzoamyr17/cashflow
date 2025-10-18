@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import { TransactionTable } from './components/TransactionTable';
+import { TransactionTable, NewTransactionForm } from './components/TransactionTable';
 import { toast } from 'sonner';
 
 interface PaymentMethod{
@@ -99,15 +99,7 @@ export default function DashboardPage() {
     return <LoadingSpinner />;
   }
 
-  const handleAddTransaction = async (newTransaction: {
-    user_id: string;
-    date: string;
-    type: TransactionType;
-    category_id: string;
-    amount: string;
-    method: PaymentMethod;
-    notes: string;
-  }) => {
+  const handleAddTransaction = async (newTransaction: NewTransactionForm) => {
     try {
       const response = await fetch('/api/transactions/create', {
         method: 'POST',
@@ -118,7 +110,7 @@ export default function DashboardPage() {
       toast.success('Transaction added successfully');
 
       if(response.ok){
-        let newItem = {
+        const newItem = {
           ...data.transaction,
           categories: categories.find(cat => cat.id === data.transaction.category_id) as {
             id: string;
@@ -137,7 +129,7 @@ export default function DashboardPage() {
 
   const handleDeleteTransaction = async (deleteId: string) => {
     if (deleteId) {
-      
+
       try {
         const response = await fetch('/api/transactions/delete', {
           method: 'POST',
@@ -151,6 +143,10 @@ export default function DashboardPage() {
         toast.error('Error deleting transaction');
       }
     }
+  };
+
+  const handleCategoryCreated = (newCategory: Category) => {
+    setCategories(prevCategories => [...prevCategories, newCategory]);
   };
 
   return (
@@ -197,7 +193,7 @@ export default function DashboardPage() {
 
           <div className="w-1/2">
             <label className="mb-2 block text-sm font-medium">Category</label>
-            <Select value={filterCategoryId || 'all'} onValueChange={(value) => setfilterCategoryId(value === 'all' ? undefined : value)}>
+            <Select key={categories.length} value={filterCategoryId || 'all'} onValueChange={(value) => setfilterCategoryId(value === 'all' ? undefined : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
@@ -229,6 +225,7 @@ export default function DashboardPage() {
         userId={user?.id || ''}
         onAddTransaction={handleAddTransaction}
         onDeleteTransaction={handleDeleteTransaction}
+        onCategoryCreated={handleCategoryCreated}
         />
     </div>
   );

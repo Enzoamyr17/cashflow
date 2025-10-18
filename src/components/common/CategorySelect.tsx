@@ -16,6 +16,7 @@ interface CategorySelectProps {
   userId: string;
   placeholder?: string;
   className?: string;
+  onCategoryCreated?: (category: Category) => void;
 }
 
 const PRESET_COLORS = [
@@ -30,10 +31,12 @@ export function   CategorySelect({
   userId,
   placeholder = 'Select category...',
   className,
+  onCategoryCreated,
 }: CategorySelectProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[0]);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
@@ -41,17 +44,53 @@ export function   CategorySelect({
       return;
     }
 
+    setIsCreating(true);
     try {
-      console.log("newCategoryName", newCategoryName);
-      console.log("newCategoryColor", newCategoryColor);
+      const response = await fetch('/api/categories/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId,
+          input: {
+            name: newCategoryName.trim(),
+            color: newCategoryColor,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Category created successfully');
+
+        // Call the callback to notify parent component
+        if (onCategoryCreated) {
+          onCategoryCreated(data.category);
+        }
+
+        // Auto-select the newly created category
+        onValueChange(data.category.id);
+
+        // Reset and close dialog
+        setNewCategoryName('');
+        setNewCategoryColor(PRESET_COLORS[0]);
+        setShowAddDialog(false);
+      } else {
+        toast.error(data.error || 'Failed to create category');
+      }
     } catch (error) {
       console.error("Error creating category:", error);
+      toast.error('Failed to create category');
+    } finally {
+      setIsCreating(false);
     }
   };
 
   return (
     <>
-      <Select value={value} onValueChange={onValueChange}>
+      <Select key={categories.length} value={value} onValueChange={onValueChange}>
         <SelectTrigger className={className}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -133,11 +172,11 @@ export function   CategorySelect({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={isCreating}>
               Cancel
             </Button>
-            <Button onClick={handleCreateCategory}>
-              Create Category
+            <Button onClick={handleCreateCategory} disabled={isCreating}>
+              {isCreating ? 'Creating...' : 'Create Category'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateCategory } from '@/server/categories';
-import { UpdateCategoryInput } from '@/types';
+import { prisma } from '@/lib/prismaClient';
 
 export async function POST(request: NextRequest) {
   try {
     const input = await request.json();
 
-    const category = await updateCategory(input as UpdateCategoryInput);
+    if (!input.id) {
+      return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.color !== undefined) updateData.color = input.color;
+    if (input.planned_amount !== undefined) updateData.planned_amount = input.planned_amount;
+    if (input.is_budgeted !== undefined) updateData.is_budgeted = input.is_budgeted;
+    if (input.is_monthly !== undefined) updateData.is_monthly = input.is_monthly;
+
+    const category = await prisma.categories.update({
+      where: {
+        id: input.id,
+      },
+      data: updateData,
+    });
 
     return NextResponse.json({ category });
   } catch (error) {

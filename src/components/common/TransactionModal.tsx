@@ -56,7 +56,7 @@ export function TransactionModal({
 
           <div className="grid grid-cols-3 items-center gap-4">
             <span className="text-sm font-medium text-muted-foreground">Category:</span>
-            <span className="col-span-2 text-sm">{transaction.category_name || 'Uncategorized'}</span>
+            <span className="col-span-2 text-sm">{transaction.categories?.name || 'Uncategorized'}</span>
           </div>
 
           <div className="grid grid-cols-3 items-center gap-4">

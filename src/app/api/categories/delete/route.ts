@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteCategory } from '@/server/categories';
+import { prisma } from '@/lib/prismaClient';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,9 +9,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
     }
 
-    await deleteCategory(categoryId);
+    const category = await prisma.categories.delete({
+      where: {
+        id: categoryId,
+      },
+    });
 
-    return NextResponse.json({ success: true });
+    console.log('Category deleted:', category);
+    return NextResponse.json({ category });
   } catch (error) {
     console.error('Error deleting category:', error);
     return NextResponse.json(

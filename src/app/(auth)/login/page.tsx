@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { Label } from '@/components/ui/label';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'verify';
 type LoginMethod = 'email' | 'usercode';
 
 export default function LoginPage() {
@@ -21,6 +21,8 @@ export default function LoginPage() {
   const [userCode, setUserCode] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login, loginWithEmail, checkSession, user, isLoading: authLoading } = useAuth();
@@ -120,8 +122,9 @@ export default function LoginPage() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      toast.success('Registration successful! Please login.');
-      setMode('login');
+      toast.success('Registration successful! Please check your email for the verification code.');
+      setPendingUserId(data.userId);
+      setMode('verify');
       setPassword('');
       setConfirmPassword('');
       setName('');
@@ -133,7 +136,44 @@ export default function LoginPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleVerifyEmail = async () => {
+    if (!verificationCode.trim()) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+
+    if (!pendingUserId) {
+      toast.error('No pending verification. Please register again.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: pendingUserId, code: verificationCode }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      toast.success('Email verified successfully! You can now login.');
+      setMode('login');
+      setVerificationCode('');
+      setPendingUserId(null);
+    } catch (error) {
+      console.error('Verification error:', error);
+      toast.error(error instanceof Error ? error.message : 'Verification failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (mode === 'login') {
         if (userCode.trim()) {
@@ -141,8 +181,10 @@ export default function LoginPage() {
         } else {
           handleEmailLogin();
         }
-      } else {
+      } else if (mode === 'register') {
         handleRegister();
+      } else if (mode === 'verify') {
+        handleVerifyEmail();
       }
     }
   };
@@ -164,33 +206,37 @@ export default function LoginPage() {
           <CardDescription className="text-base">
             {mode === 'login'
               ? 'Login to your account'
-              : 'Create a new account'}
+              : mode === 'register'
+              ? 'Create a new account'
+              : 'Verify your email'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Login Mode Tabs */}
-          <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <button
-              onClick={() => setMode('login')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                mode === 'login'
-                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setMode('register')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                mode === 'register'
-                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Register
-            </button>
-          </div>
+          {/* Login Mode Tabs - Hide when in verify mode */}
+          {mode !== 'verify' && (
+            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <button
+                onClick={() => setMode('login')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'login'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                onClick={() => setMode('register')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  mode === 'register'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                Register
+              </button>
+            </div>
+          )}
 
           {/* Login Form */}
           {mode === 'login' && (
@@ -203,7 +249,7 @@ export default function LoginPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -216,7 +262,7 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -237,11 +283,11 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <Input
                   id="usercode"
-                  type="text"
-                  placeholder="User code (legacy)"
+                  type="password"
+                  placeholder="User code"
                   value={userCode}
                   onChange={(e) => setUserCode(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -275,7 +321,7 @@ export default function LoginPage() {
                   placeholder="Enter your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -288,7 +334,7 @@ export default function LoginPage() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -301,7 +347,7 @@ export default function LoginPage() {
                   placeholder="Enter your password (min 8 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -314,7 +360,7 @@ export default function LoginPage() {
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyDown}
                   disabled={isLoading}
                   className="text-base"
                 />
@@ -327,6 +373,53 @@ export default function LoginPage() {
               >
                 {isLoading ? 'Creating account...' : 'Create Account'}
               </Button>
+            </>
+          )}
+
+          {/* Verification Form */}
+          {mode === 'verify' && (
+            <>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  We&apos;ve sent a verification code to <strong>{email}</strong>.
+                  Please enter it below to verify your account.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="verification-code">Verification Code</Label>
+                  <Input
+                    id="verification-code"
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={isLoading}
+                    className="text-base text-center tracking-widest"
+                    maxLength={6}
+                  />
+                </div>
+                <Button
+                  onClick={handleVerifyEmail}
+                  disabled={isLoading || !verificationCode.trim()}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isLoading ? 'Verifying...' : 'Verify Email'}
+                </Button>
+                <div className="text-center">
+                  <button
+                    onClick={() => {
+                      setMode('login');
+                      setVerificationCode('');
+                      setPendingUserId(null);
+                    }}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    disabled={isLoading}
+                  >
+                    Back to Login
+                  </button>
+                </div>
+              </div>
             </>
           )}
         </CardContent>

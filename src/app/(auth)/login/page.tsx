@@ -9,6 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { Label } from '@/components/ui/label';
+import Image from 'next/image';
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
 
 type AuthMode = 'login' | 'register' | 'verify';
 type LoginMethod = 'email' | 'usercode';
@@ -26,6 +29,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login, loginWithEmail, checkSession, user, isLoading: authLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     // Check if user already has a valid session
@@ -200,16 +204,26 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <Card className="w-full max-w-md shadow-lg">
+      <div className="absolute top-5 right-5">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-6 w-6" />
+          ) : (
+            <Moon className="h-6 w-6" />
+          )}
+        </Button>
+      </div>
+      <Card className="w-full md:max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Cashflow Tracker</CardTitle>
-          <CardDescription className="text-base">
-            {mode === 'login'
-              ? 'Login to your account'
-              : mode === 'register'
-              ? 'Create a new account'
-              : 'Verify your email'}
-          </CardDescription>
+          <CardTitle className="m-auto text-3xl font-bold">
+            <Image src="/assets/flow/white.png" className="hidden dark:block" alt="Flow Logo" width={500} height={100} />
+            <Image src="/assets/flow/black.png" className="block dark:hidden" alt="Flow Logo" width={500} height={100} />
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Login Mode Tabs - Hide when in verify mode */}
@@ -219,7 +233,7 @@ export default function LoginPage() {
                 onClick={() => setMode('login')}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   mode === 'login'
-                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
@@ -229,7 +243,7 @@ export default function LoginPage() {
                 onClick={() => setMode('register')}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   mode === 'register'
-                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-400 shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
@@ -274,7 +288,7 @@ export default function LoginPage() {
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white dark:bg-gray-950 px-2 text-muted-foreground">
+                  <span className="bg-card px-2 text-muted-foreground">
                     Or use user code
                   </span>
                 </div>

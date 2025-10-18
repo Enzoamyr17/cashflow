@@ -14,29 +14,29 @@ interface BudgetMetricsProps {
 }
 
 export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown, categories, timeFrameMonths }: BudgetMetricsProps) {
-  // Calculate total budgeted expenses (sum of all Total Budgets)
+  // Calculate total budgeted expenses (sum of all planned budgets)
+  // Note: categoryBreakdown.planned already has the monthly multiplier applied
   const budgetedExpenses = categoryBreakdown.reduce((total, cat) => {
-    const category = categories.find(c => c.id === cat.categoryId);
-    if (category?.is_monthly) {
-      return total + (cat.planned * Math.floor(timeFrameMonths));
-    }
     return total + cat.planned;
   }, 0);
 
   // Calculate unbudgeted expenses (actual expenses from unbudgeted categories)
-  const unbudgetedExpenses = Math.abs(unbudgetedBreakdown.reduce((total, cat) => {
-    // Only include negative values (expenses), skip positive values (income)
-    return cat.actual < 0 ? total + cat.actual : total;
-  }, 0));
+  // Note: In our system, expenses are POSITIVE and income is NEGATIVE
+  const unbudgetedExpenses = unbudgetedBreakdown.reduce((total, cat) => {
+    // Only include positive values (expenses), skip negative values (income)
+    return cat.actual > 0 ? total + cat.actual : total;
+  }, 0);
 
   // Calculate receivables (all planned incomes)
   const receivables = summary.projectedIncome;
 
-  //actual balance uses only actual (completed) transactions
+  // Actual balance uses only actual (completed) transactions
   const actualBalance = summary.startingBudget + summary.actualIncome - summary.actualExpenses - unbudgetedExpenses;
-  // Unbudgeted balance calculation (Starting Balance - Budgeted Expenses - Unbudgeted Expenses + Receivables)
-  const unbudgetedBalance = summary.startingBudget - budgetedExpenses - unbudgetedExpenses + receivables + summary.actualIncome;
-  // Calculate change for actual
+
+  // Projected balance calculation (Starting Balance + Projected Income + Actual Income - Budgeted Expenses - Unbudgeted Expenses)
+  const projectedBalance = summary.startingBudget + receivables + summary.actualIncome - budgetedExpenses - unbudgetedExpenses;
+
+  // Calculate change (net cash flow from completed transactions)
   const actualChange = summary.actualIncome - summary.actualExpenses - unbudgetedExpenses;
 
   return (
@@ -94,7 +94,7 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
             {formatCurrency(summary.actualExpenses + unbudgetedExpenses)}
           </div>
           <p className="text-xs text-muted-foreground h-0 ">
-            {formatCurrency(unbudgetedExpenses)} unbudgeted expenses
+            unbudgeted: {formatCurrency(unbudgetedExpenses)}
           </p>
         </CardContent>
       </Card>
@@ -129,17 +129,17 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
         </CardContent>
       </Card>
 
-      {/* Unbudgeted Balance */}
+      {/* Projected Balance */}
       <Card className="order-7 md:order-4 w-1/3 lg:w-1/5 lg:max-w-1/2 flex-grow-1 whitespace-nowrap py-8">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Unbudgeted Balance</CardTitle>
+          <CardTitle className="text-sm font-medium">Projected Balance</CardTitle>
           <Wallet className="h-4 w-4 hidden lg:block text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-semibold ${
-            unbudgetedBalance >= 0 ? 'text-green-600' : 'text-red-700'
+            projectedBalance >= 0 ? 'text-green-600' : 'text-red-700'
           }`}>
-            {formatCurrency(unbudgetedBalance)}
+            {formatCurrency(projectedBalance)}
           </div>
         </CardContent>
       </Card>

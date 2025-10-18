@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Moon, Sun, LogOut, DollarSign, Wallet, ChartArea, List, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import Image from 'next/image';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -26,35 +27,35 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-8">
             <Link href="/dashboard" className="flex items-center space-x-2">
-              <DollarSign className="h-6 w-6 text-blue-500" />
-              <span className="hidden md:block text-xl font-bold">Cashflow</span>
+              <Image src="/assets/flow/Flow_White.png" className="hidden dark:block" alt="Flow Logo" width={150} height={80} />
+              <Image src="/assets/flow/Flow_Black.png" className="block dark:hidden" alt="Flow Logo" width={150} height={80} />
             </Link>
             <div className="flex space-x-1">
               <Link href="/dashboard">
                 <Button
-                  variant={isActive('/dashboard') ? 'default' : 'ghost'}
+                  variant={isActive('/dashboard') ? 'outline' : 'ghost'}
                   size="sm"
                 >
                   <ChartArea className="h-4 w-4" />
-                  <p className="hidden md:block">Dashboard</p>
+                  <p className={`hidden lg:block`}>Dashboard</p>
                 </Button>
               </Link>
               <Link href="/budget">
                 <Button
-                  variant={isActive('/budget') ? 'default' : 'ghost'}
+                  variant={isActive('/budget') ? 'outline' : 'ghost'}
                   size="sm"
                 >
                   <Wallet className="h-4 w-4" />
-                  <p className="hidden md:block">Budget</p>
+                  <p className={`hidden lg:block`}>Budget</p>
                 </Button>
               </Link>
               <Link href="/categories">
                 <Button
-                  variant={isActive('/categories') ? 'default' : 'ghost'}
+                  variant={isActive('/categories') ? 'outline' : 'ghost'}
                   size="sm"
                 >
                   <List className="h-4 w-4" />
-                  <p className="hidden md:block">Categories</p>
+                  <p className={`hidden lg:block`}>Categories</p>
                 </Button>
               </Link>
             </div>

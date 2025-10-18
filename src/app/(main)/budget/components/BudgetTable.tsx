@@ -154,16 +154,16 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
   return (
     <div className="rounded-lg border bg-card">
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Budget Transactions</h2>
+        <h2 className="font-semibold">Budget Transactions</h2>
         <Button onClick={handleAddClick} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Create Transaction
+          Add
         </Button>
       </div>
 
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="font-medium opacity-50">
             <TableHead>Date</TableHead>
             <TableHead className="hidden md:table-cell">Type</TableHead>
             <TableHead className="hidden md:table-cell">Category</TableHead>
@@ -271,7 +271,6 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
               <TableCell colSpan={8}>
                 <EmptyState
                   title="No transactions"
-                  description="Click 'Create Transaction' to start budgeting, or add transactions from the dashboard"
                 />
               </TableCell>
             </TableRow>

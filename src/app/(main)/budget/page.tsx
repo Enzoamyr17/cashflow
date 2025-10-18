@@ -1,9 +1,10 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Transaction, TransactionType, PaymentMethod } from '@/types/transaction';
 import { Category } from '@/types/category';
+import { BudgetSummary, CategoryBreakdown } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,9 @@ import { formatCurrency } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { CategoryBreakdownCard } from './components/CategoryBreakdownCard';
 import { BudgetTable } from './components/BudgetTable';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { BudgetMetrics } from './components/BudgetMetrics';
 
 export default function BudgetPage() {
   const { user } = useAuth();
@@ -22,6 +25,7 @@ export default function BudgetPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
 
   
   const fetchTransactions = async () => {
@@ -160,20 +164,118 @@ export default function BudgetPage() {
     setCategories(prevCategories => [...prevCategories, newCategory]);
   };
 
+  // Filter categories
+  const budgetedCategories = useMemo(() => categories.filter(cat => cat.is_budgeted === true), [categories]);
+  const unbudgetedCategories = useMemo(() => categories.filter(cat => cat.is_budgeted === false), [categories]);
+
+  // Calculate timeframe
+  const timeFrameMonths = useMemo(() => parseFloat(((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30)).toFixed(1)), [filterEndDate, filterStartDate]);
+  const timeFrameDays = useMemo(() => Math.ceil((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24)), [filterEndDate, filterStartDate]);
+
+  // Calculate budget summary
+  const summary: BudgetSummary = useMemo(() => {
+    const plannedTransactions = transactions.filter(t => t.is_planned);
+    const completedTransactions = transactions.filter(t => !t.is_planned);
+
+    const projectedIncome = plannedTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const projectedExpenses = plannedTransactions
+      .filter(t => t.type === 'expense' && t.categories?.is_budgeted)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const actualIncome = completedTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const actualExpenses = completedTransactions
+      .filter(t => t.type === 'expense' && t.categories?.is_budgeted)
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const totalIncome = projectedIncome + actualIncome;
+    const totalExpenses = projectedExpenses + actualExpenses;
+
+    return {
+      startDate: filterStartDate,
+      endDate: filterEndDate,
+      startingBudget: user?.starting_balance || 0,
+      timeFrameDays,
+      totalIncome,
+      totalExpenses,
+      projectedIncome,
+      actualIncome,
+      projectedExpenses,
+      actualExpenses,
+      remaining: (user?.starting_balance || 0) + totalIncome - totalExpenses,
+    };
+  }, [transactions, filterStartDate, filterEndDate, timeFrameDays, user?.starting_balance]);
+
+  // Calculate category breakdown for budgeted categories
+  const categoryBreakdown: CategoryBreakdown[] = useMemo(() => {
+    return budgetedCategories.map(cat => {
+      const categoryTransactions = transactions.filter(t => t.categories?.id === cat.id && !t.is_planned);
+
+      const actual = categoryTransactions.reduce((sum, t) => {
+        return sum + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount));
+      }, 0);
+
+      let planned = cat.planned_amount || 0;
+      if (cat.is_monthly) {
+        planned = planned * Math.floor(timeFrameMonths);
+      }
+
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        categoryColor: cat.color,
+        planned,
+        actual,
+        remaining: planned - actual,
+      };
+    });
+  }, [budgetedCategories, transactions, timeFrameMonths]);
+
+  // Calculate category breakdown for unbudgeted categories
+  const unbudgetedBreakdown: CategoryBreakdown[] = useMemo(() => {
+    return unbudgetedCategories.map(cat => {
+      const categoryTransactions = transactions.filter(t => t.categories?.id === cat.id && !t.is_planned);
+
+      const actual = categoryTransactions.reduce((sum, t) => {
+        return sum + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount));
+      }, 0);
+
+      return {
+        categoryId: cat.id,
+        categoryName: cat.name,
+        categoryColor: cat.color,
+        planned: 0,
+        actual,
+        remaining: -actual,
+      };
+    });
+  }, [unbudgetedCategories, transactions]);
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  const budgetedCategories = categories.filter(cat => cat.is_budgeted === true);
-  const unbudgetedCategories = categories.filter(cat => cat.is_budgeted === false);
-
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Budget Settings</CardTitle>
+        <CardHeader className="cursor-pointer md:cursor-default" onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}>
+          <div className="flex items-center justify-between">
+            <CardTitle>Budget Settings</CardTitle>
+            <div className="md:hidden">
+              {isSettingsExpanded ? (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className={`${isSettingsExpanded ? 'block' : 'hidden'} md:block`}>
           <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -196,7 +298,7 @@ export default function BudgetPage() {
               />
             </div>
             <div>
-              <Label htmlFor="time-frame">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
+              <Label className="whitespace-nowrap" htmlFor="time-frame">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
               <Input
                 id="time-frame"
                 value={((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30)).toFixed(1)}
@@ -217,6 +319,14 @@ export default function BudgetPage() {
           </div>
         </CardContent>
       </Card>
+
+      <BudgetMetrics
+        summary={summary}
+        categoryBreakdown={categoryBreakdown}
+        unbudgetedBreakdown={unbudgetedBreakdown}
+        categories={categories}
+        timeFrameMonths={timeFrameMonths}
+      />
 
       <CategoryBreakdownCard
         budgetedCategories={budgetedCategories || []}

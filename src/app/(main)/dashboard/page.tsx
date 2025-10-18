@@ -6,10 +6,12 @@ import { DashboardHeader } from './components/DashboardHeader';
 import { useEffect, useState } from 'react';
 import { Transaction, TransactionType } from '@/types/transaction';
 import { Category } from '@/types/category';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { TransactionTable, NewTransactionForm } from './components/TransactionTable';
 import { toast } from 'sonner';
 
@@ -37,6 +39,7 @@ export default function DashboardPage() {
   const [filterEndDate, setfilterEndDate] = useState(today);
   const [filterType, setfilterType] = useState<('income' | 'expense' | 'all')>('all');
   const [filterCategoryId, setfilterCategoryId] = useState<string | undefined>(undefined);
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
   const clearFilters = () => {
     setfilterStartDate(userCreatedAt);
@@ -151,69 +154,84 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader className="cursor-pointer md:cursor-default" onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}>
+          <div className="flex items-center justify-between">
+            <CardTitle>Filter Transactions</CardTitle>
+            <div className="md:hidden">
+              {isFiltersExpanded ? (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={`${isFiltersExpanded ? 'block' : 'hidden'} md:block`}>
+          <div className="flex flex-col md:flex-row flex-wrap md:flex-nowrap justify-evenly items-center md:items-end gap-2 md:gap-4">
+            <div className="w-full space-y-1">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setfilterStartDate(e.target.value)}
+                onBlur={(e) => setfilterStartDate(e.target.value || '')}
+              />
+            </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap justify-evenly items-end gap-4 rounded-lg border bg-card p-4">
-        <div className="flex flex-nowrap gap-4">
-          <div className="w-1/2">
-            <label className="mb-2 block text-sm font-medium">Start Date</label>
-            <Input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setfilterStartDate(e.target.value)}
-              onBlur={(e) => setfilterStartDate(e.target.value || '')}
-            />
+            <div className="w-full space-y-1">
+              <Label htmlFor="endDate">End Date</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setfilterEndDate(e.target.value)}
+                onBlur={(e) => setfilterEndDate(e.target.value || '')}
+              />
+            </div>
+
+            <div className="flex flex-row md:flex-col justify-between items-center md:items-start space-y-1 w-full max-w-sm lg:w-auto">
+              <Label htmlFor="filterType">Type</Label>
+              <Select value={filterType} onValueChange={(value) => setfilterType(value as 'income' | 'expense' | 'all')}>
+                <SelectTrigger id="filterType">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                  <SelectItem value="expense">Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-row md:flex-col justify-between items-center md:items-start space-y-1 w-full max-w-sm lg:w-auto">
+              <Label htmlFor="filterCategory">Category</Label>
+              <Select key={categories.length} value={filterCategoryId || 'all'} onValueChange={(value) => setfilterCategoryId(value === 'all' ? undefined : value)}>
+                <SelectTrigger id="filterCategory">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full flex justify-center">
+              <Button variant="outline" onClick={clearFilters} className="w-full max-w-sm">
+                <X className="h-4 w-4" />
+                <p className="ml-2 block md:hidden lg:block">Clear Filters</p>
+              </Button>
+            </div>
           </div>
 
-          <div className="w-1/2">
-            <label className="mb-2 block text-sm font-medium">End Date</label>
-            <Input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setfilterEndDate(e.target.value)}
-              onBlur={(e) => setfilterEndDate(e.target.value || '')}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-nowrap gap-4">
-          <div className="w-1/2">
-            <label className="mb-2 block text-sm font-medium">Type</label>
-            <Select value={filterType} onValueChange={(value) => setfilterType(value as 'income' | 'expense' | 'all')}>
-              <SelectTrigger>
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="w-1/2">
-            <label className="mb-2 block text-sm font-medium">Category</label>
-            <Select key={categories.length} value={filterCategoryId || 'all'} onValueChange={(value) => setfilterCategoryId(value === 'all' ? undefined : value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <Button variant="outline" onClick={clearFilters} size="icon">
-          <X className="h-4 w-4" />
-        </Button>
-
-      </div>
+        </CardContent>
+      </Card>
 
       <DashboardHeader 
         transactions={transactions || []} />

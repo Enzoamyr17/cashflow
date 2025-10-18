@@ -40,7 +40,7 @@ export async function sendVerificationEmail(
   const mailOptions = {
     from: FROM_EMAIL,
     to: email,
-    subject: 'Verify Your Email - Cashflow Tracker',
+    subject: 'Verify Your Email - Flow by Saint',
     html: `
       <!DOCTYPE html>
       <html>
@@ -107,8 +107,7 @@ export async function sendVerificationEmail(
         <body>
           <div class="container">
             <div class="header">
-              <h1>Cashflow Tracker</h1>
-              <p style="color: #6b7280;">Email Verification</p>
+              <img src="https://flow.gregorio-dev.cloud/assets/flow/Flow_Black.png" alt="Flow by Saint" width="300" height="100">
             </div>
 
             <p>Hello${userName ? ` ${userName}` : ''},</p>

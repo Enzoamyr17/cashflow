@@ -123,23 +123,16 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Categories</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Manage your income and expense categories
-        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Add New Category</CardTitle>
-          <CardDescription>
-            Create categories to organize your transactions
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="categoryName">Category Name</Label>
+          <form onSubmit={handleCreate} className="flex flex-col gap-2 lg:gap-0 lg:flex-row lg:justify-center lg:items-center">
+            <div className="w-full grid gap-4 lg:grid-cols-2">
+              <div className="flex justify-center items-center">
                 <Input
                   id="categoryName"
                   placeholder="e.g., Groceries, Salary, Entertainment"
@@ -147,9 +140,8 @@ export default function CategoriesPage() {
                   onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                 />
               </div>
-              <div>
-                <Label htmlFor="categoryColor">Color</Label>
-                <div className="flex gap-2 mt-2">
+              <div className="flex justify-center items-center">
+                <div className="flex gap-2">
                   {PRESET_COLORS.map((color) => (
                     <button
                       key={color}
@@ -165,10 +157,12 @@ export default function CategoriesPage() {
                 </div>
               </div>
             </div>
-            <Button type="submit">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
+            <div className="flex justify-end items-center">
+              <Button type="submit">
+                <Plus className="h-4 w-4" />
+                Add Category
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -185,14 +179,13 @@ export default function CategoriesPage() {
             <EmptyState
               icon={FolderOpen}
               title="No categories yet"
-              description="Add your first category to get started organizing your transactions"
             />
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-0 md:gap-x-4 md:grid-cols-2 lg:grid-cols-3">
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="flex items-center justify-between border-b last:border-b-0 dark:border-gray-200 p-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <div className="flex items-center gap-3">
                     <div

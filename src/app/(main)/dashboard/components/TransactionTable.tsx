@@ -231,7 +231,6 @@ export function TransactionTable({ transactions, categories, userId, onAddTransa
               <TableCell colSpan={7}>
                 <EmptyState
                   title="No transactions yet"
-                  description="Click 'Add Transaction' to get started"
                 />
               </TableCell>
             </TableRow>

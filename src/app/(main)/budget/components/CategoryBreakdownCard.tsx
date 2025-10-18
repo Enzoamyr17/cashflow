@@ -198,7 +198,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
                   onClick={() => setShowAddCategory(!showAddCategory)}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Category
+                  Create Budget
                 </Button>
               )}
             </div>
@@ -208,8 +208,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
       {isExpanded && (
         <CardContent>
         {showAddCategory && hiddenCategories.length > 0 && (
-          <div className="mb-4 p-4 border rounded-lg bg-muted/50">
-            <p className="text-sm  mb-2">Select a category to add to budget:</p>
+          <div className="mb-4">
             <Select
               onValueChange={(categoryId) => {
                 toggleBudgetedMutation.mutate({
@@ -245,14 +244,13 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
         {budgetedCategories.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No categories in budget.</p>
-            <p className="text-sm mt-1">Click &quot;Add Category&quot; to get started.</p>
           </div>
         ) : (
           <>
-            <h3 className="text-base font-semibold mb-3">Budgeted Categories</h3>
+            <h3 className="text-base opacity-50 mb-3">Budgeted Categories</h3>
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="font-medium opacity-50">
                   <TableHead>Category</TableHead>
                   <TableHead>Budget</TableHead>
                   <TableHead className="hidden lg:table-cell">Total Budget</TableHead>
@@ -286,7 +284,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
                 const actualForMonth = calculateActualForMonth(cat.id);
 
                 return (
-                  <TableRow key={cat.id}>
+                  <TableRow key={cat.id} className="">
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         {cat.color && (
@@ -401,12 +399,12 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
         )}
 
         {/* Unbudgeted Categories Table */}
-        {hiddenCategories.length > 0 && (
+        {hiddenCategories.length > 0 && transactions.length > 0 && (
           <div className="mt-8 pt-8 border-t">
-            <h3 className="text-base font-semibold mb-3">Unbudgeted Categories</h3>
+            <h3 className="text-base opacity-50 mb-3">Unbudgeted Categories</h3>
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="font-medium opacity-50">
                   <TableHead>Category</TableHead>
                   <TableHead>Flow</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
@@ -421,7 +419,7 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
                   .map((cat) => {
                     const spending = unbudgetedBreakdown.find(b => b.categoryId === cat.id);
                     return (
-                      <TableRow key={cat.id}>
+                      <TableRow key={cat.id} className="">
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             {cat.color && (

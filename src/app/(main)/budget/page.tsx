@@ -8,6 +8,8 @@ import { BudgetSummary, CategoryBreakdown } from '@/types/budget';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { formatCurrency } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { CategoryBreakdownCard } from './components/CategoryBreakdownCard';
@@ -19,15 +21,32 @@ import { BudgetMetrics } from './components/BudgetMetrics';
 export default function BudgetPage() {
   const { user } = useAuth();
   const today = new Date().toISOString().split('T')[0];
-  const userCreatedAt = user?.created_at?.split('T')[0] || '';
-  const [filterStartDate, setfilterStartDate] = useState(userCreatedAt);
-  const [filterEndDate, setfilterEndDate] = useState(today);
+  const twoMonthsFromToday = new Date(new Date().setMonth(new Date().getMonth() + 2)).toISOString().split('T')[0];
+  const [filterStartDate, setfilterStartDate] = useState(today);
+  const [filterEndDate, setfilterEndDate] = useState(twoMonthsFromToday);
+  const [selectedTimeframeMonths, setSelectedTimeframeMonths] = useState(2);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
 
-  
+  // Utility functions for date calculations
+  const calculateEndDateFromTimeframe = (startDate: string, months: number): string => {
+    const start = new Date(startDate);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + months);
+    return end.toISOString().split('T')[0];
+  };
+
+  const calculateTimeframeFromDates = (startDate: string, endDate: string): number => {
+    const start = new Date(startDate).getTime();
+    const end = new Date(endDate).getTime();
+    const months = (end - start) / (1000 * 60 * 60 * 24 * 30);
+    // Round up to nearest whole month, minimum of 1
+    return Math.max(1, Math.ceil(months));
+  };
+
+
   const fetchTransactions = async () => {
     try {
       const response = await fetch('/api/transactions/get', {
@@ -283,8 +302,13 @@ export default function BudgetPage() {
                 id="startDate"
                 type="date"
                 value={filterStartDate}
-                onChange={(e) => setfilterStartDate(e.target.value)}
-                onBlur={(e) => setfilterStartDate(e.target.value)}
+                onChange={(e) => {
+                  const newStartDate = e.target.value;
+                  setfilterStartDate(newStartDate);
+                  // Recalculate end date based on current timeframe
+                  const newEndDate = calculateEndDateFromTimeframe(newStartDate, selectedTimeframeMonths);
+                  setfilterEndDate(newEndDate);
+                }}
               />
             </div>
             <div>
@@ -293,18 +317,47 @@ export default function BudgetPage() {
                 id="endDate"
                 type="date"
                 value={filterEndDate}
-                onChange={(e) => setfilterEndDate(e.target.value)}
-                onBlur={(e) => setfilterEndDate(e.target.value)}
+                onChange={(e) => {
+                  const newEndDate = e.target.value;
+                  setfilterEndDate(newEndDate);
+                  // Recalculate timeframe based on new end date
+                  const newTimeframe = calculateTimeframeFromDates(filterStartDate, newEndDate);
+                  setSelectedTimeframeMonths(newTimeframe);
+                }}
               />
             </div>
             <div>
-              <Label className="whitespace-nowrap" htmlFor="time-frame">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
-              <Input
-                id="time-frame"
-                value={((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30)).toFixed(1)}
-                readOnly
-                className="bg-muted"
-              />
+              <Label className="whitespace-nowrap">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between font-normal"
+                  >
+                    {selectedTimeframeMonths} {selectedTimeframeMonths === 1 ? 'Month' : 'Months'}
+                    <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="start">
+                  <div className="grid gap-1">
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
+                      <Button
+                        key={months}
+                        variant={selectedTimeframeMonths === months ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => {
+                          setSelectedTimeframeMonths(months);
+                          // Recalculate end date based on new timeframe
+                          const newEndDate = calculateEndDateFromTimeframe(filterStartDate, months);
+                          setfilterEndDate(newEndDate);
+                        }}
+                      >
+                        {months} {months === 1 ? 'Month' : 'Months'}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label htmlFor="starting-balance">Starting Balance</Label>

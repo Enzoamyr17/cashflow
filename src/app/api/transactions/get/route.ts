@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prismaClient';
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, filterStartDate, filterEndDate, type, categoryId, isBudgetPage = false } = await request.json();
+    const { userId, filterStartDate, filterEndDate, type, categoryId, budgetFrameId, isBudgetPage = false } = await request.json();
 
     // return NextResponse.json({ userId, filterStartDate, filterEndDate, type, categoryId }, { status: 200 });
     if (!userId) {
@@ -13,19 +13,32 @@ export async function POST(request: NextRequest) {
 
     const whereClause: Record<string, unknown> = {
       user_id: userId,
-      date: {
-        gte: new Date(filterStartDate),
-        lte: new Date(filterEndDate + 'T23:59:59.999Z'),
-      },
     };
+
+    // Add date filtering if provided
+    if (filterStartDate && filterEndDate) {
+      const startDate = new Date(filterStartDate);
+      const endDate = new Date(filterEndDate);
+      // Set end date to end of day
+      endDate.setHours(23, 59, 59, 999);
+
+      whereClause.date = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
 
     if (type) whereClause.type = type;
     if (categoryId) whereClause.category_id = categoryId;
+    if (budgetFrameId) whereClause.budget_frame_id = budgetFrameId;
 
     if (!isBudgetPage) {
+      // Dashboard should show:
+      // - Regular transactions (is_planned: false, is_completed: false)
+      // - Completed transactions (is_completed: true, regardless of is_planned)
       whereClause.OR = [
-        { is_planned: true, is_completed: true },
         { is_planned: false, is_completed: false },
+        { is_completed: true },
       ];
     }
 

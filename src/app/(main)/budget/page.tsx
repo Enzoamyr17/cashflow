@@ -1,76 +1,45 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState, useMemo } from 'react';
-import { Transaction, TransactionType, PaymentMethod } from '@/types/transaction';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { BudgetFrameWithCategories } from '@/types/budgetFrame';
 import { Category } from '@/types/category';
-import { BudgetSummary, CategoryBreakdown } from '@/types/budget';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { formatCurrency } from '@/lib/formatters';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { CategoryBreakdownCard } from './components/CategoryBreakdownCard';
-import { BudgetTable } from './components/BudgetTable';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { BudgetCard } from '@/components/budget/BudgetCard';
+import { BudgetCreateModal } from '@/components/budget/BudgetCreateModal';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { BudgetMetrics } from './components/BudgetMetrics';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
-export default function BudgetPage() {
+export default function BudgetListPage() {
   const { user } = useAuth();
-  const today = new Date().toISOString().split('T')[0];
-  const twoMonthsFromToday = new Date(new Date().setMonth(new Date().getMonth() + 2)).toISOString().split('T')[0];
-  const [filterStartDate, setfilterStartDate] = useState(today);
-  const [filterEndDate, setfilterEndDate] = useState(twoMonthsFromToday);
-  const [selectedTimeframeMonths, setSelectedTimeframeMonths] = useState(2);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const router = useRouter();
+  const [budgetFrames, setBudgetFrames] = useState<BudgetFrameWithCategories[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Utility functions for date calculations
-  const calculateEndDateFromTimeframe = (startDate: string, months: number): string => {
-    const start = new Date(startDate);
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + months);
-    return end.toISOString().split('T')[0];
-  };
-
-  const calculateTimeframeFromDates = (startDate: string, endDate: string): number => {
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-    const months = (end - start) / (1000 * 60 * 60 * 24 * 30);
-    // Round up to nearest whole month, minimum of 1
-    return Math.max(1, Math.ceil(months));
-  };
-
-
-  const fetchTransactions = async () => {
+  const fetchBudgetFrames = async () => {
     try {
-      const response = await fetch('/api/transactions/get', {
+      const response = await fetch('/api/budget-frames/get', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          userId: user?.id,
-          filterStartDate: filterStartDate,
-          filterEndDate: filterEndDate,
-          type: undefined,
-          categoryId: undefined,
-          isBudgetPage: true,
-         }),
+        body: JSON.stringify({ userId: user?.id }),
       });
 
       const data = await response.json();
-      setTransactions(data);
-      console.log("Transactions fetched:", data);
+      setBudgetFrames(data.budgetFrames || []);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error fetching budget frames:', error);
+      toast.error('Failed to load budgets');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const fetchCategories = async () => {
@@ -85,195 +54,80 @@ export default function BudgetPage() {
 
       const data = await response.json();
       setCategories(data);
-      console.log("Categories fetched:", data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
     if (user) {
-      fetchTransactions();
+      fetchBudgetFrames();
       fetchCategories();
     }
-  }, [user, filterStartDate, filterEndDate ]);
+  }, [user]);
 
-  const handleAddTransaction = async (newTransaction: {
+  const handleCreateBudget = async (budgetData: {
     user_id: string;
-    date: string;
-    type: TransactionType;
-    category_id: string;
-    amount: string;
-    method: PaymentMethod;
-    notes: string;
-    is_planned?: boolean;
-    is_completed?: boolean;
+    name: string;
+    start_date: string;
+    end_date: string;
+    starting_balance: number;
+    categories?: {
+      category_id: string;
+      planned_amount: number;
+      is_monthly: boolean;
+    }[];
   }) => {
     try {
-      const response = await fetch('/api/transactions/create', {
+      const response = await fetch('/api/budget-frames/create', {
         method: 'POST',
-        body: JSON.stringify({
-          newTransaction: {
-            ...newTransaction,
-            amount: parseFloat(newTransaction.amount),
-            is_completed: newTransaction.is_completed ?? false,
-          }
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(budgetData),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to create budget');
+      }
+
       const data = await response.json();
-      console.log(newTransaction);
-      console.log(data);
-      toast.success('Transaction added successfully');
-
-      if(response.ok){
-        const newItem = {
-          ...data.transaction,
-          categories: categories.find(cat => cat.id === data.transaction.category_id) as {
-            id: string;
-            name: string;
-            color: string;
-            is_budgeted: boolean;
-          },
-        };
-        setTransactions([newItem, ...transactions]);
-      }
-
+      toast.success('Budget created successfully');
+      setBudgetFrames([data.budgetFrame, ...budgetFrames]);
     } catch (error) {
-      toast.error('Error adding transaction');
+      console.error('Error creating budget:', error);
+      toast.error('Failed to create budget');
     }
   };
 
-  const handleDeleteTransaction = async (deleteId: string) => {
-    if (deleteId) {
-      try {
-        const response = await fetch('/api/transactions/delete', {
-          method: 'POST',
-          body: JSON.stringify({ transactionId: deleteId }),
-        });
-        if(response.ok){
-          toast.success('Transaction deleted successfully');
-          setTransactions(transactions.filter(transaction => transaction.id !== deleteId));
-        }
-      } catch (error) {
-        toast.error('Error deleting transaction');
-      }
-    }
-  };
+  const handleDeleteBudget = async () => {
+    if (!deleteId) return;
 
-  const handleCompleteTransaction = async (transactionId: string) => {
     try {
-      const response = await fetch('/api/transactions/mark-completed', {
+      const response = await fetch('/api/budget-frames/delete', {
         method: 'POST',
-        body: JSON.stringify({ transactionId }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ budgetFrameId: deleteId }),
       });
 
-      if(response.ok){
-        toast.success('Transaction completed successfully');
-        setTransactions(transactions.map(t =>
-          t.id === transactionId ? { ...t, is_completed: true, is_planned: false } : t
-        ));
+      if (!response.ok) {
+        throw new Error('Failed to delete budget');
       }
+
+      toast.success('Budget deleted successfully');
+      setBudgetFrames(budgetFrames.filter((bf) => bf.id !== deleteId));
+      setDeleteId(null);
     } catch (error) {
-      toast.error('Error completing transaction');
+      console.error('Error deleting budget:', error);
+      toast.error('Failed to delete budget');
     }
   };
 
-  const handleCategoryCreated = (newCategory: Category) => {
-    setCategories(prevCategories => [...prevCategories, newCategory]);
+  const handleBudgetClick = (budgetId: string) => {
+    router.push(`/budget/${budgetId}`);
   };
-
-  // Filter categories
-  const budgetedCategories = useMemo(() => categories.filter(cat => cat.is_budgeted === true), [categories]);
-  const unbudgetedCategories = useMemo(() => categories.filter(cat => cat.is_budgeted === false), [categories]);
-
-  // Calculate timeframe
-  const timeFrameMonths = useMemo(() => parseFloat(((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30)).toFixed(1)), [filterEndDate, filterStartDate]);
-  const timeFrameDays = useMemo(() => Math.ceil((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24)), [filterEndDate, filterStartDate]);
-
-  // Calculate budget summary
-  const summary: BudgetSummary = useMemo(() => {
-    const plannedTransactions = transactions.filter(t => t.is_planned);
-    const completedTransactions = transactions.filter(t => !t.is_planned);
-
-    const projectedIncome = plannedTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const projectedExpenses = plannedTransactions
-      .filter(t => t.type === 'expense' && t.categories?.is_budgeted)
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const actualIncome = completedTransactions
-      .filter(t => t.type === 'income')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const actualExpenses = completedTransactions
-      .filter(t => t.type === 'expense' && t.categories?.is_budgeted)
-      .reduce((sum, t) => sum + Number(t.amount), 0);
-
-    const totalIncome = projectedIncome + actualIncome;
-    const totalExpenses = projectedExpenses + actualExpenses;
-
-    return {
-      startDate: filterStartDate,
-      endDate: filterEndDate,
-      startingBudget: user?.starting_balance || 0,
-      timeFrameDays,
-      totalIncome,
-      totalExpenses,
-      projectedIncome,
-      actualIncome,
-      projectedExpenses,
-      actualExpenses,
-      remaining: (user?.starting_balance || 0) + totalIncome - totalExpenses,
-    };
-  }, [transactions, filterStartDate, filterEndDate, timeFrameDays, user?.starting_balance]);
-
-  // Calculate category breakdown for budgeted categories
-  const categoryBreakdown: CategoryBreakdown[] = useMemo(() => {
-    return budgetedCategories.map(cat => {
-      const categoryTransactions = transactions.filter(t => t.categories?.id === cat.id && !t.is_planned);
-
-      const actual = categoryTransactions.reduce((sum, t) => {
-        return sum + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount));
-      }, 0);
-
-      let planned = cat.planned_amount || 0;
-      if (cat.is_monthly) {
-        planned = planned * Math.floor(timeFrameMonths);
-      }
-
-      return {
-        categoryId: cat.id,
-        categoryName: cat.name,
-        categoryColor: cat.color,
-        planned,
-        actual,
-        remaining: planned - actual,
-      };
-    });
-  }, [budgetedCategories, transactions, timeFrameMonths]);
-
-  // Calculate category breakdown for unbudgeted categories
-  const unbudgetedBreakdown: CategoryBreakdown[] = useMemo(() => {
-    return unbudgetedCategories.map(cat => {
-      const categoryTransactions = transactions.filter(t => t.categories?.id === cat.id && !t.is_planned);
-
-      const actual = categoryTransactions.reduce((sum, t) => {
-        return sum + (t.type === 'expense' ? Number(t.amount) : -Number(t.amount));
-      }, 0);
-
-      return {
-        categoryId: cat.id,
-        categoryName: cat.name,
-        categoryColor: cat.color,
-        planned: 0,
-        actual,
-        remaining: -actual,
-      };
-    });
-  }, [unbudgetedCategories, transactions]);
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -281,122 +135,60 @@ export default function BudgetPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="cursor-pointer md:cursor-default" onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}>
-          <div className="flex items-center justify-between">
-            <CardTitle>Budget Settings</CardTitle>
-            <div className="md:hidden">
-              {isSettingsExpanded ? (
-                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className={`${isSettingsExpanded ? 'block' : 'hidden'} md:block`}>
-          <div className="grid gap-6 grid-cols-2 md:grid-cols-4">
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => {
-                  const newStartDate = e.target.value;
-                  setfilterStartDate(newStartDate);
-                  // Recalculate end date based on current timeframe
-                  const newEndDate = calculateEndDateFromTimeframe(newStartDate, selectedTimeframeMonths);
-                  setfilterEndDate(newEndDate);
-                }}
-              />
-            </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => {
-                  const newEndDate = e.target.value;
-                  setfilterEndDate(newEndDate);
-                  // Recalculate timeframe based on new end date
-                  const newTimeframe = calculateTimeframeFromDates(filterStartDate, newEndDate);
-                  setSelectedTimeframeMonths(newTimeframe);
-                }}
-              />
-            </div>
-            <div>
-              <Label className="whitespace-nowrap">Time Frame <span className="text-xs text-muted-foreground">(Months)</span></Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-between font-normal"
-                  >
-                    {selectedTimeframeMonths} {selectedTimeframeMonths === 1 ? 'Month' : 'Months'}
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
-                  <div className="grid gap-1">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
-                      <Button
-                        key={months}
-                        variant={selectedTimeframeMonths === months ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => {
-                          setSelectedTimeframeMonths(months);
-                          // Recalculate end date based on new timeframe
-                          const newEndDate = calculateEndDateFromTimeframe(filterStartDate, months);
-                          setfilterEndDate(newEndDate);
-                        }}
-                      >
-                        {months} {months === 1 ? 'Month' : 'Months'}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label htmlFor="starting-balance">Starting Balance</Label>
-              <Input
-                id="starting-balance"
-                value={formatCurrency(user?.starting_balance || 0)}
-                readOnly
-                className="bg-muted"
-              />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Budgets</h1>
+          <p className="text-muted-foreground mt-1">
+            Create and manage your budget frames
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Budget
+        </Button>
+      </div>
 
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {budgetFrames.length === 0 ? (
+        <div className="text-center py-16 border-2 border-dashed rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">No budgets yet</h3>
+          <p className="text-muted-foreground mb-4">
+            Create your first budget to start tracking your finances
+          </p>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Your First Budget
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {budgetFrames.map((budgetFrame) => (
+            <BudgetCard
+              key={budgetFrame.id}
+              budgetFrame={budgetFrame}
+              onClick={() => handleBudgetClick(budgetFrame.id)}
+              onDelete={(id) => setDeleteId(id)}
+            />
+          ))}
+        </div>
+      )}
 
-      <BudgetMetrics
-        summary={summary}
-        categoryBreakdown={categoryBreakdown}
-        unbudgetedBreakdown={unbudgetedBreakdown}
+      <BudgetCreateModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
         categories={categories}
-        timeFrameMonths={timeFrameMonths}
-      />
-
-      <CategoryBreakdownCard
-        budgetedCategories={budgetedCategories || []}
-        unbudgetedCategories={unbudgetedCategories || []}
-        categories={categories || []}
-        timeFrameMonths={((new Date(filterEndDate).getTime() - new Date(filterStartDate).getTime()) / (1000 * 60 * 60 * 24 * 30)).toFixed(1)}
-        transactions={transactions || []}
-      />
-
-      <BudgetTable
-        transactions={transactions || []}
-        categories={categories || []}
         userId={user?.id || ''}
-        onAddTransaction={handleAddTransaction}
-        onDeleteTransaction={handleDeleteTransaction}
-        onCompleteTransaction={handleCompleteTransaction}
-        onCategoryCreated={handleCategoryCreated}
+        onSave={handleCreateBudget}
+        defaultStartingBalance={Number(user?.starting_balance || 0)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Budget"
+        description="Are you sure you want to delete this budget? All associated transactions will remain but will no longer be linked to this budget."
+        onConfirm={handleDeleteBudget}
+        confirmText="Delete"
+        variant="destructive"
       />
     </div>
   );

@@ -14,15 +14,30 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { AddCategoryToBudgetModal } from '@/components/budget/AddCategoryToBudgetModal';
 interface CategoryBreakdownCardProps {
   budgetedCategories: Category[];
   unbudgetedCategories: Category[];
   categories: Category[];
   timeFrameMonths: string;
   transactions: Transaction[];
+  onUpdateCategory?: (categoryId: string, plannedAmount: number, isMonthly: boolean) => Promise<void>;
+  onRemoveCategory?: (categoryId: string) => Promise<void>;
+  onAddCategory?: (categoryId: string, plannedAmount: number, isMonthly: boolean) => Promise<void>;
+  budgetFrameId?: string;
 }
 
-export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories, categories, timeFrameMonths, transactions }: CategoryBreakdownCardProps) {
+export function CategoryBreakdownCard({
+  budgetedCategories,
+  unbudgetedCategories,
+  categories,
+  timeFrameMonths,
+  transactions,
+  onUpdateCategory,
+  onRemoveCategory,
+  onAddCategory,
+  budgetFrameId
+}: CategoryBreakdownCardProps) {
   const queryClient = useQueryClient();
   const currentDate = new Date().toISOString().split('T')[0];
   const [isExpanded, setIsExpanded] = useState(false);
@@ -85,18 +100,30 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
     setEditIsMonthly(false);
   };
 
-  const saveEdit = (categoryId: string) => {
+  const saveEdit = async (categoryId: string) => {
     const planned_amount = parseFloat(editValue);
     if (isNaN(planned_amount) || planned_amount < 0) {
       toast.error('Please enter a valid amount');
       return;
     }
-    updateCategoryMutation.mutate({
-      id: categoryId,
-      planned_amount,
-      is_monthly: editIsMonthly,
-    });
-    setEditingId(null);
+
+    // If we have a callback from parent (budget frame context), use it
+    if (onUpdateCategory && budgetFrameId) {
+      try {
+        await onUpdateCategory(categoryId, planned_amount, editIsMonthly);
+        setEditingId(null);
+      } catch (error) {
+        console.error('Error updating category:', error);
+      }
+    } else {
+      // Otherwise use the old mutation (for backward compatibility)
+      updateCategoryMutation.mutate({
+        id: categoryId,
+        planned_amount,
+        is_monthly: editIsMonthly,
+      });
+      setEditingId(null);
+    }
   };
 
   // Hidden categories (unbudgeted)
@@ -109,7 +136,8 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
     const currentYear = current.getFullYear();
 
     // Filter transactions that belong to the same month and year as currentDate (exclude planned transactions)
-    const categoryTransactions = transactions.filter(t => {
+    const transactionsList = Array.isArray(transactions) ? transactions : [];
+    const categoryTransactions = transactionsList.filter(t => {
       if (t.categories?.id !== categoryId) return false;
       if (t.is_planned) return false;
 
@@ -131,7 +159,8 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
 
   // Calculate total actual spending across ALL transactions (for Total Remaining)
   const calculateTotalActual = (categoryId: string) => {
-    const categoryTransactions = transactions.filter(t => t.categories?.id === categoryId && !t.is_planned);
+    const transactionsList = Array.isArray(transactions) ? transactions : [];
+    const categoryTransactions = transactionsList.filter(t => t.categories?.id === categoryId && !t.is_planned);
 
     let actual = 0;
     categoryTransactions.forEach(t => {
@@ -191,14 +220,14 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
               <div className="flex items-center gap-2">
 
               </div>
-              {hiddenCategories.length > 0 && (
+              {hiddenCategories.length > 0 && onAddCategory && budgetFrameId && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowAddCategory(!showAddCategory)}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Create Budget
+                  Add to Budget
                 </Button>
               )}
             </div>
@@ -207,38 +236,6 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
       </CardHeader>
       {isExpanded && (
         <CardContent>
-        {showAddCategory && hiddenCategories.length > 0 && (
-          <div className="mb-4">
-            <Select
-              onValueChange={(categoryId) => {
-                toggleBudgetedMutation.mutate({
-                  categoryId,
-                  isBudgeted: true
-                });
-                setShowAddCategory(false);
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Choose category..." />
-              </SelectTrigger>
-              <SelectContent>
-                {hiddenCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    <div className="flex items-center space-x-2">
-                      {cat.color && (
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: cat.color }}
-                        />
-                      )}
-                      <span>{cat.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         {/* Budgeted Categories Table */}
         {budgetedCategories.length === 0 ? (
@@ -375,13 +372,23 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => {
+                        onClick={async () => {
                           const category = categories.find(c => c.id === cat.id);
                           if (category) {
-                            toggleBudgetedMutation.mutate({
-                              categoryId: cat.id,
-                              isBudgeted: false
-                            });
+                            // If we have a callback from parent (budget frame context), use it
+                            if (onRemoveCategory && budgetFrameId) {
+                              try {
+                                await onRemoveCategory(cat.id);
+                              } catch (error) {
+                                console.error('Error removing category:', error);
+                              }
+                            } else {
+                              // Otherwise use the old mutation
+                              toggleBudgetedMutation.mutate({
+                                categoryId: cat.id,
+                                isBudgeted: false
+                              });
+                            }
                           }
                         }}
                         className="h-8 w-8"
@@ -458,6 +465,16 @@ export function CategoryBreakdownCard({ budgetedCategories, unbudgetedCategories
           </div>
         )}
         </CardContent>
+      )}
+
+      {/* Add Category to Budget Modal */}
+      {onAddCategory && budgetFrameId && (
+        <AddCategoryToBudgetModal
+          open={showAddCategory}
+          onOpenChange={setShowAddCategory}
+          availableCategories={hiddenCategories}
+          onAdd={onAddCategory}
+        />
       )}
     </Card>
   );

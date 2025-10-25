@@ -4,9 +4,9 @@ import { Decimal } from '@/generated/prisma/runtime/library';
 import { PaymentMethod } from '@/types';
 
 export async function POST(request: NextRequest) {
-  const { newTransaction: { user_id, category_id, type, amount, method, notes, date, is_completed = false, is_planned = false } } = await request.json();
+  const { newTransaction: { user_id, category_id, budget_frame_id, type, amount, method, notes, date, is_completed = false, is_planned = false } } = await request.json();
 
-  console.log(user_id, category_id, type, amount, method, notes, date);
+  console.log(user_id, category_id, budget_frame_id, type, amount, method, notes, date);
 
   if(!user_id){
     return NextResponse.json({ error: 'User ID is required.' }, { status: 400 });
@@ -26,15 +26,13 @@ export async function POST(request: NextRequest) {
   if(!date){
     return NextResponse.json({ error: 'Date is required.' }, { status: 400 });
   }
-  if(!notes){
-    return NextResponse.json({ error: 'Notes are required.' }, { status: 400 });
-  }
 
   try {
     const transaction = await prisma.transactions.create({
       data: {
         user_id: user_id,
         category_id: category_id,
+        budget_frame_id: budget_frame_id || null,
         type: type,
         amount: new Decimal(amount),
         method: method as PaymentMethod,

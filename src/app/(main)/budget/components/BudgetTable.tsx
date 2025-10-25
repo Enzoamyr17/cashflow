@@ -67,8 +67,8 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Filter to only show budgeted categories in the dropdown
-  const budgetedCategories = categories.filter(cat => cat.is_budgeted !== false);
+  // Use all categories - allows unbudgeted category transactions
+  const availableCategories = categories;
 
   const handleAddClick = () => {
     if (isMobile) {
@@ -276,7 +276,7 @@ export function BudgetTable({ transactions, categories, userId, onAddTransaction
             </TableRow>
           )}
 
-          {[...transactions].sort((a, b) => {
+          {(Array.isArray(transactions) ? [...transactions] : []).sort((a, b) => {
             const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
             if (dateCompare !== 0) return dateCompare;
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();

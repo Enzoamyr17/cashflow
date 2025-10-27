@@ -31,7 +31,7 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
   const receivables = summary.projectedIncome;
 
   // Actual balance uses only actual (completed) transactions
-  const actualBalance = summary.startingBudget + summary.actualIncome - summary.actualExpenses - unbudgetedExpenses;
+  const actualBalance = summary.startingBudget + summary.actualIncome - summary.actualExpenses;
 
   // Projected balance calculation (Starting Balance + Projected Income + Actual Income - Budgeted Expenses - Unbudgeted Expenses)
   const projectedBalance = summary.startingBudget + receivables + summary.actualIncome - budgetedExpenses - unbudgetedExpenses;
@@ -91,7 +91,7 @@ export function BudgetMetrics({ summary, categoryBreakdown, unbudgetedBreakdown,
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-semibold text-red-700">
-            {formatCurrency(summary.actualExpenses + unbudgetedExpenses)}
+            {formatCurrency(summary.actualExpenses)}
           </div>
           <p className="text-xs text-muted-foreground h-0 ">
             unbudgeted: {formatCurrency(unbudgetedExpenses)}

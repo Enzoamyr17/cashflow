@@ -39,7 +39,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Only redirect if we're done loading and user is logged in
     if (!authLoading && user) {
-      router.push('/dashboard');
+      router.push('/budget');
     }
   }, [user, authLoading, router]);
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
     try {
       await loginWithEmail(email, password);
       toast.success('Login successful!');
-      router.push('/dashboard');
+      router.push('/budget');
     } catch (error) {
       console.error('Login error:', error);
       // Error toast is already shown by the useAuth hook
@@ -77,7 +77,7 @@ export default function LoginPage() {
     try {
       await login(userCode);
       toast.success('Login successful!');
-      router.push('/dashboard');
+      router.push('/budget');
     } catch (error) {
       console.error('Login error:', error);
       // Error toast is already shown by the useAuth hook

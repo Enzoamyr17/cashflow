@@ -14,7 +14,7 @@ export default function HomePage() {
 
     if (session) {
       // Redirect to dashboard if session exists
-      router.push('/dashboard');
+      router.push('/budget');
     } else {
       // Redirect to login if no session
       router.push('/login');

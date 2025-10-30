@@ -19,19 +19,19 @@ export function Navbar() {
     router.push('/login');
   };
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => pathname.includes(path);
 
   return (
     <nav className="border-b bg-white dark:bg-gray-800">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/dashboard" className="flex items-center space-x-2">
+            <Link href="/budget" className="flex items-center space-x-2">
               <Image src="/assets/flow/Flow_White.png" className="hidden dark:block" alt="Flow Logo" width={150} height={80} />
               <Image src="/assets/flow/Flow_Black.png" className="block dark:hidden" alt="Flow Logo" width={150} height={80} />
             </Link>
             <div className="flex space-x-1">
-              <Link href="/dashboard">
+              {/* <Link href="/dashboard">
                 <Button
                   variant={isActive('/dashboard') ? 'outline' : 'ghost'}
                   size="sm"
@@ -39,14 +39,14 @@ export function Navbar() {
                   <ChartArea className="h-4 w-4" />
                   <p className={`hidden lg:block`}>Dashboard</p>
                 </Button>
-              </Link>
+              </Link> */}
               <Link href="/budget">
                 <Button
                   variant={isActive('/budget') ? 'outline' : 'ghost'}
                   size="sm"
                 >
                   <Wallet className="h-4 w-4" />
-                  <p className={`hidden lg:block`}>Budget</p>
+                  <p className={`hidden lg:block`}>Budgets</p>
                 </Button>
               </Link>
               <Link href="/categories">

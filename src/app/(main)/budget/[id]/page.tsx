@@ -379,15 +379,15 @@ export default function BudgetDetailPage() {
     const completedTransactions = transactionsList.filter(t => !t.is_planned);
 
     const projectedIncome = plannedTransactions
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'income' && !t.is_completed)
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const projectedExpenses = plannedTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    const actualIncome = completedTransactions
-      .filter(t => t.type === 'income')
+    const actualIncome = transactionsList
+      .filter(t => t.type === 'income' && (t.is_completed || (!t.is_planned && !t.is_completed)))
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const actualExpenses = completedTransactions

@@ -60,8 +60,6 @@ export default function BudgetDetailPage() {
     try {
       const requestBody = {
         userId: user?.id,
-        filterStartDate: budgetFrame.start_date,
-        filterEndDate: budgetFrame.end_date,
         budgetFrameId: budgetFrameId,
         isBudgetPage: true,
       };

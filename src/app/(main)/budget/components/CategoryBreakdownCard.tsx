@@ -137,11 +137,11 @@ export function CategoryBreakdownCard({
     const startDate = new Date(budgetStartDate);
     const endDate = new Date(budgetEndDate);
 
-    // Filter transactions that belong to the budget frame period (exclude planned transactions)
+    // Filter transactions that belong to the budget frame period (exclude incomplete planned transactions)
     const transactionsList = Array.isArray(transactions) ? transactions : [];
     const categoryTransactions = transactionsList.filter(t => {
       if (t.categories?.id !== categoryId) return false;
-      if (t.is_planned) return false;
+      if (t.is_planned && !t.is_completed) return false;
 
       const txDate = new Date(t.date);
       return txDate >= startDate && txDate <= endDate;
@@ -162,7 +162,7 @@ export function CategoryBreakdownCard({
   // Calculate total actual spending across ALL transactions (for Total Remaining)
   const calculateTotalActual = (categoryId: string) => {
     const transactionsList = Array.isArray(transactions) ? transactions : [];
-    const categoryTransactions = transactionsList.filter(t => t.categories?.id === categoryId && !t.is_planned);
+    const categoryTransactions = transactionsList.filter(t => t.categories?.id === categoryId && !(t.is_planned && !t.is_completed));
 
     let actual = 0;
     categoryTransactions.forEach(t => {

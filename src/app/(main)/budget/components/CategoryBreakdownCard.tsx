@@ -21,6 +21,8 @@ interface CategoryBreakdownCardProps {
   categories: Category[];
   timeFrameMonths: string;
   transactions: Transaction[];
+  budgetStartDate: string;
+  budgetEndDate: string;
   onUpdateCategory?: (categoryId: string, plannedAmount: number, isMonthly: boolean) => Promise<void>;
   onRemoveCategory?: (categoryId: string) => Promise<void>;
   onAddCategory?: (categoryId: string, plannedAmount: number, isMonthly: boolean) => Promise<void>;
@@ -33,13 +35,14 @@ export function CategoryBreakdownCard({
   categories,
   timeFrameMonths,
   transactions,
+  budgetStartDate,
+  budgetEndDate,
   onUpdateCategory,
   onRemoveCategory,
   onAddCategory,
   budgetFrameId
 }: CategoryBreakdownCardProps) {
   const queryClient = useQueryClient();
-  const currentDate = new Date().toISOString().split('T')[0];
   const [isExpanded, setIsExpanded] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -129,20 +132,19 @@ export function CategoryBreakdownCard({
   // Hidden categories (unbudgeted)
   const hiddenCategories = unbudgetedCategories;
 
-  // Calculate actual spending for the month of the selected date
+  // Calculate actual spending for the budget frame period
   const calculateActualForMonth = (categoryId: string) => {
-    const current = new Date(currentDate);
-    const currentMonth = current.getMonth();
-    const currentYear = current.getFullYear();
+    const startDate = new Date(budgetStartDate);
+    const endDate = new Date(budgetEndDate);
 
-    // Filter transactions that belong to the same month and year as currentDate (exclude planned transactions)
+    // Filter transactions that belong to the budget frame period (exclude planned transactions)
     const transactionsList = Array.isArray(transactions) ? transactions : [];
     const categoryTransactions = transactionsList.filter(t => {
       if (t.categories?.id !== categoryId) return false;
       if (t.is_planned) return false;
 
       const txDate = new Date(t.date);
-      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+      return txDate >= startDate && txDate <= endDate;
     });
 
     let actual = 0;

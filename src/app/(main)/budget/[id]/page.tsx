@@ -523,6 +523,8 @@ export default function BudgetDetailPage() {
         categories={budgetedCategories}
         timeFrameMonths={timeFrameMonths.toFixed(1)}
         transactions={transactions}
+        budgetStartDate={budgetFrame.start_date}
+        budgetEndDate={budgetFrame.end_date}
         onUpdateCategory={handleUpdateCategoryWrapper}
         onRemoveCategory={handleRemoveCategoryWrapper}
         onAddCategory={handleAddCategoryToBudget}
